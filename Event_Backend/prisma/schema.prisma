@@ -1,0 +1,153 @@
+
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// 2. Enums (Strict Type Safety)
+enum UserRole {
+  USER
+  ADMIN
+}
+
+enum SeatStatus {
+  AVAILABLE
+  LOCKED
+  BOOKED
+}
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  CANCELLED
+  FAILED
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REFUNDED
+}
+
+enum AuthProvider {
+  LOCAL
+  GOOGLE
+  GITHUB
+}
+
+// 3. Models
+
+model User {
+  id          Int          @id @default(autoincrement())
+  email       String       @unique
+  name        String?
+  avatar      String?      // URL from Google/GitHub
+  password    String?      // Optional: Null if logged in via OAuth
+  role        UserRole     @default(USER)
+  
+  // OAuth Specifics
+  provider    AuthProvider @default(LOCAL)
+  providerId  String?      // The ID returned by Google/GitHub
+  
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  // Relations
+  bookings    Booking[]
+  lockedSeats Seat[]       // A user can hold locks on multiple seats
+  
+  @@map("users")           // Maps to SQL table "users"
+}
+
+model Event {
+  id          Int       @id @default(autoincrement())
+  title       String
+  description String?   @db.Text
+  location    String
+  date        DateTime
+  bannerUrl   String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // Relations
+  seats       Seat[]
+  bookings    Booking[]
+
+  @@map("events")
+}
+
+model Seat {
+  id            Int        @id @default(autoincrement())
+  eventId       Int
+  seatNumber    String     // e.g., 'A1', 'B2'
+  price         Decimal    @db.Decimal(10, 2)
+  status        SeatStatus @default(AVAILABLE)
+
+  // 🔒 Concurrency Locking Mechanism
+  userId        Int?       // User who currently holds the lock
+  lockExpiresAt DateTime?  // When the lock automatically releases
+  version       Int        @default(0) // Optimistic Locking Version
+
+  // Relations
+  event         Event      @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user          User?      @relation(fields: [userId], references: [id]) // The user holding the lock
+  ticket        Ticket?
+
+  @@index([status])        // Optimize queries filtering by 'AVAILABLE'
+  @@index([eventId])
+  @@map("seats")
+}
+
+model Booking {
+  id          Int           @id @default(autoincrement())
+  userId      Int
+  eventId     Int
+  totalAmount Decimal       @db.Decimal(10, 2)
+  status      BookingStatus @default(PENDING)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  // Relations
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  event       Event         @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  tickets     Ticket[]
+  payment     Payment?
+
+  @@index([userId])
+  @@map("bookings")
+}
+
+model Ticket {
+  id        Int      @id @default(autoincrement())
+  bookingId Int
+  seatId    Int      @unique // One seat per ticket
+  qrCode    String   @unique // The hash for entry validation
+  issuedAt  DateTime @default(now())
+
+  // Relations
+  booking   Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  seat      Seat     @relation(fields: [seatId], references: [id])
+
+  @@map("tickets")
+}
+
+model Payment {
+  id            Int           @id @default(autoincrement())
+  bookingId     Int           @unique
+  transactionId String        @unique // 'pidx' from Khalti or PayPal ID
+  gateway       String        // 'KHALTI', 'PAYPAL'
+  amount        Decimal       @db.Decimal(10, 2)
+  status        PaymentStatus @default(PENDING)
+  createdAt     DateTime      @default(now())
+
+  // Relations
+  booking       Booking       @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@map("payments")
+}
