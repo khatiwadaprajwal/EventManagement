@@ -1,9 +1,11 @@
-import prisma from '../config/db';
-import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
+import  prisma from '../config/db';
 import { env } from '../config/env';
 import { AuthProvider } from '@prisma/client';
 import { AppError } from '../utils/AppError';
+// Import the utils
+import { generateAccessToken, generateRefreshToken } from '../utils/tokenGenerate';
 
 interface SocialProfile {
   email: string;
@@ -14,9 +16,8 @@ interface SocialProfile {
 }
 
 export class AuthService {
-  /**
-   * Handle Google OAuth Login/Signup
-   */
+  
+  // --- 1. GOOGLE LOGIC ---
   async handleSocialLogin(profile: SocialProfile) {
     const existingUser = await prisma.user.findUnique({
       where: { email: profile.email },
@@ -25,7 +26,7 @@ export class AuthService {
     if (existingUser) {
       if (existingUser.provider !== profile.provider) {
         throw new AppError(
-          `Account already exists with ${existingUser.provider} provider. Please login with that method.`,
+          `Account already exists with ${existingUser.provider} provider.`,
           400
         );
       }
@@ -44,9 +45,7 @@ export class AuthService {
     });
   }
 
-  /**
-   * Handle Local Registration (Email/Password)
-   */
+  // --- 2. REGISTER LOGIC ---
   async register(data: any) {
     const existingUser = await prisma.user.findUnique({
       where: { email: data.email },
@@ -68,12 +67,14 @@ export class AuthService {
       },
     });
 
-    return newUser;
+    // Generate tokens immediately so user is logged in after signup
+    const accessToken = generateAccessToken(newUser.id, newUser.role);
+    const refreshToken = generateRefreshToken(newUser.id, newUser.role);
+
+    return { user: newUser, accessToken, refreshToken };
   }
 
-  /**
-   * Handle Local Login
-   */
+  // --- 3. LOGIN LOGIC ---
   async login(data: any) {
     const user = await prisma.user.findUnique({
       where: { email: data.email },
@@ -83,23 +84,60 @@ export class AuthService {
       throw new AppError('Incorrect email or password', 401);
     }
 
-    const isPasswordValid = await bcrypt.compare(data.password, user.password);
+    // Lock Check
+    if (user.lockUntil && user.lockUntil > new Date()) {
+      const minutesLeft = Math.ceil((user.lockUntil.getTime() - Date.now()) / 60000);
+      throw new AppError(`Account locked. Try again in ${minutesLeft} minute(s)`, 403);
+    }
 
-    if (!isPasswordValid) {
+    // Password Check
+    const isMatch = await bcrypt.compare(data.password, user.password);
+
+    if (!isMatch) {
+      const newAttempts = (user.loginAttempts || 0) + 1;
+      let lockUntil = user.lockUntil;
+
+      if (newAttempts >= 10) {
+        lockUntil = new Date(Date.now() + 60 * 60 * 1000); // 1 Hour
+      }
+
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { loginAttempts: newAttempts, lockUntil: lockUntil }
+      });
+
+      if (newAttempts >= 10) throw new AppError('Account locked due to too many failed login attempts.', 403);
       throw new AppError('Incorrect email or password', 401);
     }
 
-    return user;
+    // Success: Reset locks
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { loginAttempts: 0, lockUntil: null }
+    });
+
+    // Generate Tokens using UTILS
+    const accessToken = generateAccessToken(user.id, user.role);
+    const refreshToken = generateRefreshToken(user.id, user.role);
+
+    return { user, accessToken, refreshToken };
   }
 
-  /**
-   * Generate JWT Token
-   */
-  generateToken(userId: number, role: string) {
-    // using 'as any' to bypass strict Zod/JWT type conflict
-    return jwt.sign({ id: userId, role }, env.JWT_SECRET, {
-      expiresIn: env.JWT_EXPIRES_IN as any, 
-    });
+  // --- 4. REFRESH LOGIC ---
+  async refreshAccessToken(oldRefreshToken: string) {
+    try {
+      const decoded = jwt.verify(oldRefreshToken, env.REFRESH_SECRET) as { id: number; role: string };
+
+      const user = await prisma.user.findUnique({ where: { id: decoded.id } });
+      if (!user) throw new AppError('User not found', 401);
+
+      // Generate NEW Access Token using UTILS
+      const newAccessToken = generateAccessToken(user.id, user.role);
+
+      return { accessToken: newAccessToken };
+    } catch (error) {
+      throw new AppError('Invalid or expired refresh token', 403);
+    }
   }
 }
 

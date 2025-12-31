@@ -2,39 +2,44 @@ import express, { Application, Request, Response } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
+import cookieParser from 'cookie-parser'; 
 import { env } from './config/env';
-import passport from './config/passport'; // Import the config we made
-import authRoutes from './routes/auth.routes';
+import passport from './config/passport';
+import routes from './routes/index'; 
 import { globalErrorHandler } from './middlewares/globalErrorHandler';
+
 const app: Application = express();
 
 // 1. Global Middlewares
-app.use(express.json()); // Parse JSON bodies
-app.use(express.urlencoded({ extended: true })); // Parse URL-encoded bodies
-app.use(cors());         // Enable Cross-Origin Resource Sharing
-app.use(helmet());       // Add Security Headers
+app.use(express.json()); 
+app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser()); 
+app.use(cors({
+  origin: env.CLIENT_URL, 
+  credentials: true,      
+}));         
+app.use(helmet());       
 
-// Logger only in development
+// Logger (Dev only)
 if (env.NODE_ENV === 'development') {
   app.use(morgan('dev'));
 }
+
+// Passport Init
 app.use(passport.initialize());
 
-// Routes
-app.use('/api/v1/auth', authRoutes);
-
-// Error Handler (Must be last)
-app.use(globalErrorHandler);
-// 2. Health Check Route (To test if server is alive)
+// 2. Health Check
 app.get('/', (req: Request, res: Response) => {
   res.status(200).json({
     message: 'Welcome to TicketHive API 🚀',
-    environment: env.NODE_ENV,
-    timestamp: new Date().toISOString(),
+    env: env.NODE_ENV,
   });
 });
 
-// 3. Routes will go here later...
-// app.use('/api/v1', routes);
+
+app.use('/v1', routes); 
+
+// 4. Global Error Handler (Must be last)
+app.use(globalErrorHandler);
 
 export default app;

@@ -9,7 +9,7 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// 2. Enums (Strict Type Safety)
+
 enum UserRole {
   USER
   ADMIN
@@ -50,7 +50,8 @@ model User {
   avatar      String?      // URL from Google/GitHub
   password    String?      // Optional: Null if logged in via OAuth
   role        UserRole     @default(USER)
-  
+  loginAttempts Int       @default(0)
+  lockUntil     DateTime? 
   // OAuth Specifics
   provider    AuthProvider @default(LOCAL)
   providerId  String?      // The ID returned by Google/GitHub

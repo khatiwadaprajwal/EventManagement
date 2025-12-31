@@ -13,6 +13,7 @@ const envSchema = z.object({
   // .url() checks if it actually looks like a URL (starts with postgres:// etc)
    DATABASE_URL: z.string().min(1, "DATABASE_URL is required"),
    JWT_SECRET: z.string().min(10),
+   REFRESH_SECRET: z.string().min(10),
    JWT_EXPIRES_IN: z.string().default('1d'),
    GOOGLE_CLIENT_ID: z.string().min(1),
    GOOGLE_CLIENT_SECRET: z.string().min(1),
