@@ -1,119 +1,119 @@
-import { Request, Response, NextFunction } from 'express';
-import { authService } from '../services/auth.service';
+import { Request, Response } from 'express';
+import * as authService from '../services/auth.service';
 import { env } from '../config/env';
 import { User as PrismaUser } from '@prisma/client';
-// Import utils for the Google Callback flow
+import { catchAsync } from '../utils/catchAsync';
 import { generateAccessToken, generateRefreshToken } from '../utils/tokenGenerate';
+import { sendResponse } from '../utils/sendResponse'; // ✅ Imported
 
-export class AuthController {
+// --- GOOGLE CALLBACK ---
+export const googleCallback = catchAsync(async (req: Request, res: Response) => {
+  const user = req.user as PrismaUser;
+
+  if (!user) {
+    return res.redirect(`${env.CLIENT_URL}/login?error=auth_failed`);
+  }
+
+  const accessToken = generateAccessToken(user.id, user.role);
+  const refreshToken = generateRefreshToken(user.id, user.role);
+
+  res.cookie('refreshToken', refreshToken, {
+    httpOnly: true,
+    secure: env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    maxAge: 7 * 24 * 60 * 60 * 1000,
+  });
+
   
-  // --- GOOGLE CALLBACK ---
-  async googleCallback(req: Request, res: Response, next: NextFunction) {
-    try {
-      const user = req.user as PrismaUser;
+  res.redirect(`${env.CLIENT_URL}/auth/success?token=${accessToken}`);
+});
 
-      if (!user) {
-        return res.redirect(`${env.CLIENT_URL}/login?error=auth_failed`);
-      }
+// --- REGISTER ---
+export const register = catchAsync(async (req: Request, res: Response) => {
+  const { user, accessToken, refreshToken } = await authService.register(req.body);
 
-      // Generate tokens here (since Passport only returned the User object)
-      const accessToken = generateAccessToken(user.id, user.role);
-      const refreshToken = generateRefreshToken(user.id, user.role);
+  res.cookie('refreshToken', refreshToken, {
+    httpOnly: true,
+    secure: env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    maxAge: 7 * 24 * 60 * 60 * 1000,
+  });
 
-      // We usually send the Access Token in URL, but Refresh Token in Cookies
-      res.cookie('refreshToken', refreshToken, {
-        httpOnly: true,
-        secure: env.NODE_ENV === 'production',
-        sameSite: 'lax',
-        maxAge: 7 * 24 * 60 * 60 * 1000,
-      });
+ 
+  sendResponse(res, {
+    statusCode: 201,
+    success: true,
+    message: 'Registration successful',
+    token: accessToken,
+    data: { 
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        role: user.role
+      } 
+    },
+  });
+});
 
-      // Redirect to frontend with Access Token
-      res.redirect(`${env.CLIENT_URL}/auth/success?token=${accessToken}`);
-    } catch (error) {
-      next(error);
-    }
+// --- LOGIN ---
+export const login = catchAsync(async (req: Request, res: Response) => {
+  const { user, accessToken, refreshToken } = await authService.login(req.body);
+
+  res.cookie('refreshToken', refreshToken, {
+    httpOnly: true,
+    secure: env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    maxAge: 7 * 24 * 60 * 60 * 1000,
+  });
+
+  
+  sendResponse(res, {
+    statusCode: 200,
+    success: true,
+    message: 'Login successful',
+    token: accessToken,
+    data: { 
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        role: user.role
+      } 
+    },
+  });
+});
+
+// --- REFRESH ---
+export const refresh = catchAsync(async (req: Request, res: Response) => {
+  const cookies = req.cookies;
+  if (!cookies?.refreshToken) {
+    throw new Error('No Refresh Token Provided');
   }
 
-  // --- REGISTER ---
-  async register(req: Request, res: Response, next: NextFunction) {
-    try {
-      // Service now returns tokens too
-      const { user, accessToken, refreshToken } = await authService.register(req.body);
-      
-      // Set Cookie
-      res.cookie('refreshToken', refreshToken, {
-        httpOnly: true,
-        secure: env.NODE_ENV === 'production',
-        sameSite: 'lax',
-        maxAge: 7 * 24 * 60 * 60 * 1000,
-      });
+  const { accessToken } = await authService.refreshAccessToken(cookies.refreshToken);
 
-      res.status(201).json({
-        status: 'success',
-        token: accessToken,
-        data: { user },
-      });
-    } catch (error) {
-      next(error);
-    }
-  }
 
-  // --- LOGIN ---
-  async login(req: Request, res: Response, next: NextFunction) {
-    try {
-      const { user, accessToken, refreshToken } = await authService.login(req.body);
+  sendResponse(res, {
+    statusCode: 200,
+    success: true,
+    message: 'Token refreshed successfully',
+    token: accessToken,
+  });
+});
 
-      res.cookie('refreshToken', refreshToken, {
-        httpOnly: true,
-        secure: env.NODE_ENV === 'production',
-        sameSite: 'lax',
-        maxAge: 7 * 24 * 60 * 60 * 1000,
-      });
-
-      res.status(200).json({
-        status: 'success',
-        token: accessToken,
-        data: { 
-          id: user.id,
-          email: user.email,
-          role: user.role
-        },
-      });
-    } catch (error) {
-      next(error);
-    }
-  }
-
-  // --- REFRESH ---
-  async refresh(req: Request, res: Response, next: NextFunction) {
-    try {
-      const cookies = req.cookies;
-      if (!cookies?.refreshToken) {
-        return res.status(401).json({ message: 'No Refresh Token Provided' });
-      }
-
-      const { accessToken } = await authService.refreshAccessToken(cookies.refreshToken);
-
-      res.status(200).json({
-        status: 'success',
-        token: accessToken,
-      });
-    } catch (error) {
-      next(error);
-    }
-  }
-
-  // --- LOGOUT ---
-  logout(req: Request, res: Response) {
-    res.clearCookie('refreshToken', {
-      httpOnly: true,
-      secure: env.NODE_ENV === 'production',
-      sameSite: 'lax',
-    });
-    
-    res.status(200).json({ message: 'Logged out successfully' });
-  }
-}
-
-export const authController = new AuthController();
+// --- LOGOUT ---
+export const logout = (req: Request, res: Response) => {
+  res.clearCookie('refreshToken', {
+    httpOnly: true,
+    secure: env.NODE_ENV === 'production',
+    sameSite: 'lax',
+  });
+  
+  
+  sendResponse(res, {
+    statusCode: 200,
+    success: true,
+    message: 'Logged out successfully',
+  });
+};

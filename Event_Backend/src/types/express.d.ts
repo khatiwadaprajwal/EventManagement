@@ -1,16 +1,12 @@
-import { UserRole, AuthProvider } from '@prisma/client';
+import { User as PrismaUser } from '@prisma/client';
 
 declare global {
   namespace Express {
-    interface User {
-      id: number;
-      email: string;
-      role: UserRole;
-      provider: AuthProvider;
-    }
-
+    // This allows req.user to be strictly typed as the Prisma User
+    interface User extends PrismaUser {}
+    
     interface Request {
-      user?: User;
+      user?: PrismaUser;
     }
   }
 }

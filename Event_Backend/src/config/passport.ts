@@ -2,7 +2,7 @@
 import passport from 'passport';
 import { Strategy as GoogleStrategy } from 'passport-google-oauth20';
 import { env } from './env';
-import { authService } from '../services/auth.service';
+import  * as authService  from '../services/auth.service';
 import { AuthProvider } from '@prisma/client';
 
 passport.use(
