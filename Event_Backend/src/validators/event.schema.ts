@@ -1,17 +1,30 @@
 import { z } from 'zod';
 
+// Define structure for Seat Tiers
+const seatTierSchema = z.object({
+  category: z.string().min(1), // e.g., "VIP"
+  price: z.coerce.number().positive(),
+  count: z.coerce.number().min(1),
+});
+
 export const createEventSchema = z.object({
   body: z.object({
-    title: z.string().min(3, 'Title must be at least 3 characters'),
+    title: z.string().min(3),
     description: z.string().optional(),
-    location: z.string().min(2, 'Location is required'),
+    location: z.string().min(2),
     date: z.coerce.date().refine((date) => date > new Date(), {
       message: 'Event date must be in the future',
     }),
-    bannerUrl: z.string().url().optional(),
     
-    totalSeats: z.number().min(1).max(1000).optional().default(50),
-    pricePerSeat: z.number().positive('Price must be positive'),
+    
+    seatConfig: z.string().transform((str, ctx) => {
+      try {
+        return z.array(seatTierSchema).parse(JSON.parse(str));
+      } catch (e) {
+        ctx.addIssue({ code: 'custom', message: 'Invalid seatConfig JSON format' });
+        return z.NEVER;
+      }
+    }),
   }),
 });
 
@@ -21,6 +34,5 @@ export const updateEventSchema = z.object({
     description: z.string().optional(),
     location: z.string().optional(),
     date: z.coerce.date().optional(),
-    bannerUrl: z.string().url().optional(),
   }),
 });

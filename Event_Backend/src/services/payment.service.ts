@@ -171,24 +171,32 @@ export const verifyPayPal = async (paymentId: string, payerId: string, bookingId
 // =========================================
 const finalizeBooking = async (bookingId: number, transactionId: string, gateway: string, amount: number) => {
   
-  // ✅ FIX: Double check inside the finalizer to prevent Prisma crash
+  // 1. Input Validation
   if (!bookingId || isNaN(bookingId)) {
     throw new AppError('Cannot finalize booking: Invalid ID', 500);
   }
 
   return await prisma.$transaction(async (tx) => {
-    // A. Check if already paid (Idempotency)
+    // A. Idempotency Check (Prevent processing same payment twice)
     const existingPayment = await tx.payment.findUnique({ where: { transactionId } });
     if (existingPayment) return existingPayment; 
 
     // B. Fetch Booking
     const booking = await tx.booking.findUnique({
-        where: { id: bookingId } // Now guaranteed to be an Int
+        where: { id: bookingId } 
     });
 
     if (!booking) throw new AppError('Booking not found', 404);
 
-    // C. Create Payment Record
+    
+    if (Number(booking.totalAmount) > amount) {
+        throw new AppError(
+            `Payment Amount Mismatch. Expected: ${booking.totalAmount}, Received: ${amount}. Transaction flagged.`, 
+            400
+        );
+    }
+
+    
     const payment = await tx.payment.create({
       data: {
         bookingId,
@@ -199,15 +207,14 @@ const finalizeBooking = async (bookingId: number, transactionId: string, gateway
       },
     });
 
-    // D. Update Booking Status
+    // E. Update Booking Status
     await tx.booking.update({
       where: { id: bookingId },
       data: { status: 'CONFIRMED' },
     });
 
-    // E. Update Seats: LOCKED -> BOOKED
-    // Find seats locked by this user for this event
-    const updatedSeats = await tx.seat.updateMany({
+    
+    await tx.seat.updateMany({
       where: {
         eventId: booking.eventId,
         userId: booking.userId,
@@ -219,20 +226,21 @@ const finalizeBooking = async (bookingId: number, transactionId: string, gateway
       },
     });
 
-    // F. Generate Tickets
+   
     const seats = await tx.seat.findMany({
         where: { eventId: booking.eventId, userId: booking.userId, status: 'BOOKED' }
     });
 
     for (const seat of seats) {
-        // Idempotency check for tickets
+       
         const exists = await tx.ticket.findFirst({ where: { seatId: seat.id } });
         if (!exists) {
             await tx.ticket.create({
                 data: {
                     bookingId,
                     seatId: seat.id,
-                    qrCode: `TICKET-${bookingId}-${seat.id}-${Math.random().toString(36).substring(7)}`
+                   
+                    qrCode: `TICKET-${bookingId}-${seat.id}-${Math.random().toString(36).substring(7).toUpperCase()}`
                 }
             });
         }

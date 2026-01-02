@@ -1,17 +1,14 @@
 import  prisma  from '../config/db';
 import { AppError } from '../utils/AppError';
-import { BookingStatus, SeatStatus } from '@prisma/client';
 
 export const createBooking = async (userId: number, eventId: number, seatIds: number[]) => {
-  // 1. Start a Transaction (All or Nothing)
   return await prisma.$transaction(async (tx) => {
     
-    // A. Validate Event exists
+    // A. Validate Event
     const event = await tx.event.findUnique({ where: { id: eventId } });
     if (!event) throw new AppError('Event not found', 404);
 
-    // B. Check & Lock Seats (CRITICAL STEP)
-    // We try to update ONLY if they are available OR if the previous lock expired
+    // B. Check & Lock Seats
     const currentTime = new Date();
     const lockDuration = 15 * 60 * 1000; // 15 Minutes
     const lockExpiresAt = new Date(currentTime.getTime() + lockDuration);
@@ -21,56 +18,57 @@ export const createBooking = async (userId: number, eventId: number, seatIds: nu
         id: { in: seatIds },
         eventId: eventId,
         OR: [
-          { status: 'AVAILABLE' }, // It's free
-          { 
-            status: 'LOCKED', 
-            lockExpiresAt: { lt: currentTime } // Or the previous locker took too long
-          }
+          { status: 'AVAILABLE' },
+          { status: 'LOCKED', lockExpiresAt: { lt: currentTime } }
         ]
       },
       data: {
         status: 'LOCKED',
-        userId: userId, // Lock it for this user
+        userId: userId,
         lockExpiresAt: lockExpiresAt,
       }
     });
 
     // C. Verification
-    // If we requested 3 seats, but only locked 2, it means someone else stole 1 seat just now.
     if (lockedSeatsCount.count !== seatIds.length) {
-      throw new AppError('One or more selected seats are no longer available. Please try again.', 409);
+      throw new AppError('One or more selected seats are no longer available.', 409);
     }
 
-    // D. Calculate Total Price
-    // Fetch the updated seats to get the price
+    // D. Calculate Total Price & Fetch Details
     const lockedSeats = await tx.seat.findMany({
       where: { id: { in: seatIds } }
     });
 
     const totalAmount = lockedSeats.reduce((sum, seat) => sum + Number(seat.price), 0);
 
-    // E. Create the Booking Record (PENDING)
+    // E. Create Booking
     const booking = await tx.booking.create({
       data: {
         userId,
         eventId,
         totalAmount,
         status: 'PENDING',
-        // We link tickets later after payment, OR we can link them now as placeholders
-        // For this architecture, let's create placeholders
       }
     });
 
-    // F. Return info for Payment
+    // F. Return info for Payment (✅ IMPROVED)
     return { 
       booking, 
       expiresAt: lockExpiresAt,
-      seats: lockedSeats.map(s => s.seatNumber) 
+      // Now returns more details for the UI
+      seats: lockedSeats.map(s => ({
+        seatNumber: s.seatNumber,
+        category: s.category, // e.g. "VIP"
+        price: s.price
+      }))
     };
   });
 };
 
 // --- GET MY BOOKINGS ---
+// No change needed here! 
+// Since 'include: { seat: true }' fetches all fields, 
+// Prisma will automatically start returning the new 'category' field.
 export const getMyBookings = async (userId: number) => {
   return prisma.booking.findMany({
     where: { userId },
@@ -79,7 +77,7 @@ export const getMyBookings = async (userId: number) => {
         select: { title: true, date: true, location: true, bannerUrl: true }
       },
       tickets: {
-        include: { seat: true }
+        include: { seat: true } // Will automatically include seat.category
       }
     },
     orderBy: { createdAt: 'desc' }
@@ -99,7 +97,6 @@ export const getBooking = async (bookingId: number, userId: number) => {
 
   if (!booking) throw new AppError('Booking not found', 404);
   
-  // Security Check: Ensure user owns this booking
   if (booking.userId !== userId) throw new AppError('Unauthorized', 403);
 
   return booking;

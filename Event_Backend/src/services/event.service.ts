@@ -4,33 +4,54 @@ import { ApiFeatures } from '../utils/ApiFeatures';
 
 // --- CREATE EVENT ---
 export const createEvent = async (data: any) => {
-  const { totalSeats, pricePerSeat, ...eventData } = data;
+  const { seatConfig, ...eventData } = data; // seatConfig comes from Zod
 
-  // Transaction: Create Event + Generate Seats
-  const result = await prisma.$transaction(async (tx) => {
+  return await prisma.$transaction(async (tx) => {
     // 1. Create Event
     const event = await tx.event.create({
       data: eventData,
     });
 
-    // 2. Generate Seats (Simple Logic: Seat #1 to #N)
-    // In a real app, you might have Row/Col logic (A1, A2...)
-    const seatsData = Array.from({ length: totalSeats }, (_, i) => ({
-      eventId: event.id,
-      seatNumber: `S-${i + 1}`,
-      price: pricePerSeat,
-      status: 'AVAILABLE' as const, // Type assertion for Enum
-    }));
+    // 2. Generate Seats based on Tiers
+    // Example Config: [{ category: 'VIP', count: 10, price: 5000 }, { category: 'GEN', count: 50, price: 1000 }]
+    const seatsData: any[] = [];
 
-    await tx.seat.createMany({
-      data: seatsData,
+    seatConfig.forEach((tier: any) => {
+      for (let i = 1; i <= tier.count; i++) {
+        seatsData.push({
+          eventId: event.id,
+          // Result: VIP-001, VIP-002 ... GEN-001 ...
+          seatNumber: `${tier.category.toUpperCase().substring(0, 3)}-${i.toString().padStart(3, '0')}`,
+          price: tier.price,
+          category: tier.category, // Save the category name
+          status: 'AVAILABLE',
+        });
+      }
     });
+
+    await tx.seat.createMany({ data: seatsData });
 
     return event;
   });
-
-  return result;
 };
+
+// --- UPDATE EVENT ---
+export const updateEvent = async (id: number, data: any) => {
+  // Check if exists
+  const existing = await prisma.event.findUnique({ where: { id } });
+  if (!existing) throw new AppError('Event not found', 404);
+
+  // Note: We are NOT updating seats here because that is complex 
+  // (what if seats are already booked?). 
+  // We only update basic details and images.
+  const updatedEvent = await prisma.event.update({
+    where: { id },
+    data: data,
+  });
+
+  return updatedEvent;
+};
+
 
 // --- GET ALL EVENTS (With Filter/Sort/Page) ---
 export const getAllEvents = async (query: any) => {

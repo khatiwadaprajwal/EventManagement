@@ -7,6 +7,7 @@ import { env } from './config/env';
 import passport from './config/passport';
 import routes from './routes/index'; 
 import { globalErrorHandler } from './middlewares/globalErrorHandler';
+import { globalLimiter } from './config/limiter';
 
 const app: Application = express();
 
@@ -36,7 +37,7 @@ app.get('/', (req: Request, res: Response) => {
   });
 });
 
-
+app.use( globalLimiter); 
 app.use('/v1', routes); 
 
 // 4. Global Error Handler (Must be last)

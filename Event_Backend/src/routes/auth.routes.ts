@@ -2,13 +2,13 @@ import { Router } from 'express';
 import passport from 'passport';
 import  * as authController  from '../controllers/auth.controller';
 import { protect } from '../middlewares/auth.middleware';
-
+import { authLimiter } from '../config/limiter';
 const router = Router();
 
 // --- Public Routes ---
 // using .bind ensure 'this' context works if you use 'this' inside controller
-router.post('/register', authController.register.bind(authController));
-router.post('/login', authController.login.bind(authController));
+router.post('/register',authLimiter, authController.register.bind(authController));
+router.post('/login',authLimiter, authController.login.bind(authController));
 router.get('/refresh', authController.refresh.bind(authController)); // ✅ Added Refresh
 router.post('/logout', authController.logout.bind(authController));   // ✅ Added Logout
 

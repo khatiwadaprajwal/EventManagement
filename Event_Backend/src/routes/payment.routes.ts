@@ -1,11 +1,11 @@
 import { Router } from 'express';
 import * as paymentController from '../controllers/payment.controller';
 import { protect } from '../middlewares/auth.middleware';
-
+import { bookingLimiter } from '../config/limiter';
 const router = Router();
 
 
-router.post('/initiate', protect, paymentController.initiatePayment);
+router.post('/initiate',bookingLimiter, protect, paymentController.initiatePayment);
 
 
 router.get('/khalti/callback', paymentController.khaltiCallback);

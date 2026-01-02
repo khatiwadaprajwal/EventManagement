@@ -1,18 +1,22 @@
 import { Request, Response, NextFunction } from 'express';
-import { ZodObject } from 'zod';
-export const validate = (schema: ZodObject<any>) => 
+import { ZodSchema } from 'zod'; // Use ZodSchema to be flexible
+
+export const validate = (schema: ZodSchema<any>) => 
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      // 1. Check the data
-      await schema.parseAsync({
+
+      const parsedData = await schema.parseAsync({
         body: req.body,
         query: req.query,
         params: req.params,
       });
-      // 2. If good, go to Controller
+
+      req.body = parsedData.body;
+
+      
       return next(); 
     } catch (error) {
-      // 3. If bad, THROW it to the Global Error Handler
+
       next(error); 
     }
   };

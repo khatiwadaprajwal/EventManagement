@@ -22,7 +22,11 @@ const envSchema = z.object({
    KHALTI_SECRET_KEY: z.string(),
   PAYPAL_CLIENT_ID: z.string(),
   PAYPAL_CLIENT_SECRET: z.string(),
-  PAYPAL_API: z.string().default('https://api-m.sandbox.paypal.com')
+  PAYPAL_API: z.string().default('https://api-m.sandbox.paypal.com'),
+  
+ CLOUDINARY_CLOUD_NAME: z.string(),
+ CLOUDINARY_API_KEY: z.string(),
+ CLOUDINARY_API_SECRET: z.string(),
 });
 
 
