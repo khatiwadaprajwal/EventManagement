@@ -86,6 +86,14 @@ const Login = () => {
             Google
           </Button>
         </CardContent>
+         <CardFooter className="justify-center">
+          <p className="text-sm text-muted-foreground">
+            forgot password?{" "}
+            <Link to="/forgot-password" className="text-primary hover:underline font-medium">
+              Reset Password
+            </Link>
+          </p>
+        </CardFooter>
         <CardFooter className="justify-center">
           <p className="text-sm text-muted-foreground">
             Don't have an account?{" "}

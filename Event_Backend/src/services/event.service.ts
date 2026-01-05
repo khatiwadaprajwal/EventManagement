@@ -56,9 +56,20 @@ export const updateEvent = async (id: number, data: any) => {
 // --- GET ALL EVENTS (With Filter/Sort/Page) ---
 export const getAllEvents = async (query: any) => {
   // Initialize Prisma Query Object
-  const prismaQuery: any = { where: {}, include: { _count: { select: { seats: true } } } };
+  const prismaQuery: any = { 
+    where: {}, 
+    include: { 
+      _count: { select: { seats: true } },
+      
+     
+      bookings: {
+        where: { status: 'CONFIRMED' }, 
+        select: { totalAmount: true }  
+      }
+    } 
+  };
 
-  // Apply Features
+  // Apply Features (Filter, Sort, Paginate)
   const features = new ApiFeatures(prismaQuery, query)
     .filter()
     .sort()
@@ -68,17 +79,23 @@ export const getAllEvents = async (query: any) => {
   const events = await prisma.event.findMany(features.query);
   const total = await prisma.event.count({ where: features.query.where });
 
+  // Note: Ensure your Controller sends this 'events' array to the frontend
   return { events, total };
 };
 
-// --- GET EVENT BY ID ---
+
 export const getEvent = async (id: number) => {
   const event = await prisma.event.findUnique({
     where: { id },
     include: {
       seats: {
-        orderBy: { seatNumber: 'asc' }, // Show seats in order
-      }, 
+        orderBy: { seatNumber: 'asc' }, 
+      },
+      
+      bookings: {
+        where: { status: 'CONFIRMED' },
+        select: { totalAmount: true }
+      }
     },
   });
 
@@ -86,14 +103,35 @@ export const getEvent = async (id: number) => {
     throw new AppError('Event not found', 404);
   }
 
-  return event;
+  // 👇 2. Calculate Revenue on the Backend
+  const totalRevenue = event.bookings.reduce((sum, booking) => sum + Number(booking.totalAmount), 0);
+  const ticketsSold = event.bookings.length;
+
+  // 👇 3. Return Event with added Stats
+  return {
+    ...event,
+    totalRevenue, // Now accessible as event.totalRevenue
+    ticketsSold
+  };
 };
 
 // --- DELETE EVENT ---
+
+
 export const deleteEvent = async (id: number) => {
-  // Check existence
-  await getEvent(id);
+  const event = await prisma.event.findUnique({ where: { id } });
   
-  await prisma.event.delete({ where: { id } });
-  return null;
+  if (!event) {
+    throw new AppError('Event not found', 404);
+  }
+  await getEvent(id); 
+  await prisma.event.delete({ where: { id } }); 
 };
+
+// export const deleteEvent = async (id: number) => {
+//   const event = await getEvent(id);
+//   const hasTickets = await prisma.ticket.findFirst({ where: { eventId: id } });
+//   if (hasTickets) throw new AppError('Cannot delete event with active bookings', 400);
+
+//   return prisma.event.delete({ where: { id } });
+// };

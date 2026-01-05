@@ -15,10 +15,24 @@ export const eventAPI = {
 
   // POST /v1/events (Admin Only)
   create: async (formData) => {
-    // Axios automatically sets Content-Type to multipart/form-data when body is FormData
     const response = await apiClient.post("events", formData, {
       headers: { "Content-Type": "multipart/form-data" },
     });
     return response.data;
-  }
+  },
+
+  // DELETE /v1/events/:id
+  delete: async (id) => {
+    const response = await apiClient.delete(`events/${id}`);
+    return response.data;
+  },
+
+  // PATCH /v1/events/:id
+  // 🛠️ FIX: Used apiClient instead of axiosClient
+  update: async ({ id, formData }) => {
+    const response = await apiClient.patch(`events/${id}`, formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+    return response.data;
+  },
 };

@@ -16,5 +16,17 @@ export const authAPI = {
 
   getGoogleLoginUrl: () => {
     return "http://localhost:8000/v1/auth/google";
+  },
+
+  getSecurityQuestions: async (email) => {
+ 
+    const response = await apiClient.post("password/forgot", { email });
+    return response.data; 
+  },
+  resetPassword: async (payload) => {
+
+    const response = await apiClient.post("password/reset", payload);
+    return response.data;
   }
+
 };

@@ -1,6 +1,7 @@
-import  prisma  from '../config/db';
+import prisma from '../config/db';
 import { AppError } from '../utils/AppError';
 
+// --- CREATE BOOKING ---
 export const createBooking = async (userId: number, eventId: number, seatIds: number[]) => {
   return await prisma.$transaction(async (tx) => {
     
@@ -8,7 +9,7 @@ export const createBooking = async (userId: number, eventId: number, seatIds: nu
     const event = await tx.event.findUnique({ where: { id: eventId } });
     if (!event) throw new AppError('Event not found', 404);
 
-    // B. Check & Lock Seats
+    // B. Check & Lock Seats (Preserving your existing concurrency logic)
     const currentTime = new Date();
     const lockDuration = 15 * 60 * 1000; // 15 Minutes
     const lockExpiresAt = new Date(currentTime.getTime() + lockDuration);
@@ -34,31 +35,44 @@ export const createBooking = async (userId: number, eventId: number, seatIds: nu
       throw new AppError('One or more selected seats are no longer available.', 409);
     }
 
-    // D. Calculate Total Price & Fetch Details
+    // D. Calculate Total Price
     const lockedSeats = await tx.seat.findMany({
       where: { id: { in: seatIds } }
     });
 
     const totalAmount = lockedSeats.reduce((sum, seat) => sum + Number(seat.price), 0);
 
-    // E. Create Booking
+    // E. Create Booking (FIXED)
     const booking = await tx.booking.create({
       data: {
         userId,
         eventId,
         totalAmount,
         status: 'PENDING',
+        
+        // 1. Save Timer for Frontend (Requires expiresAt in Schema)
+        expiresAt: lockExpiresAt, 
+        
+        // 2. Create Tickets (Fixes "No seats assigned" in MyBookings)
+        tickets: {
+          create: seatIds.map((seatId) => ({
+            seatId: seatId,
+            qrCode: `TICKET-${Date.now()}-${seatId}`, // Unique QR String
+          })),
+        },
+      },
+      include: {
+        tickets: { include: { seat: true } } // Return tickets immediately
       }
     });
 
-    // F. Return info for Payment (✅ IMPROVED)
+    // F. Return info
     return { 
       booking, 
       expiresAt: lockExpiresAt,
-      // Now returns more details for the UI
       seats: lockedSeats.map(s => ({
         seatNumber: s.seatNumber,
-        category: s.category, // e.g. "VIP"
+        category: s.category,
         price: s.price
       }))
     };
@@ -66,9 +80,6 @@ export const createBooking = async (userId: number, eventId: number, seatIds: nu
 };
 
 // --- GET MY BOOKINGS ---
-// No change needed here! 
-// Since 'include: { seat: true }' fetches all fields, 
-// Prisma will automatically start returning the new 'category' field.
 export const getMyBookings = async (userId: number) => {
   return prisma.booking.findMany({
     where: { userId },
@@ -77,7 +88,7 @@ export const getMyBookings = async (userId: number) => {
         select: { title: true, date: true, location: true, bannerUrl: true }
       },
       tickets: {
-        include: { seat: true } // Will automatically include seat.category
+        include: { seat: true } 
       }
     },
     orderBy: { createdAt: 'desc' }
