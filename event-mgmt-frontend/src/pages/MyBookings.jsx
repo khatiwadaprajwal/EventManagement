@@ -28,13 +28,16 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 const MyBookings = () => {
+  // 1️⃣ Fetch User's Bookings
   const { data, isLoading, isError } = useQuery({
     queryKey: ["my-bookings"],
     queryFn: bookingAPI.getMyBookings,
   });
 
   const { mutate: payNow, isPending: isPaying } = useInitiatePayment();
-  const [selectedBookingId, setSelectedBookingId] = useState(null);
+  
+  // 2️⃣ FIX: State stores the OBJECT, not the ID
+  const [selectedBooking, setSelectedBooking] = useState(null);
 
   const bookingsData = data?.data || {};
   const bookings = Array.isArray(bookingsData) 
@@ -45,7 +48,6 @@ const MyBookings = () => {
     payNow({ bookingId, gateway });
   };
 
-  // Check if there are any pending bookings to show the warning
   const hasPendingBookings = bookings.some(b => b.status === "PENDING");
 
   if (isLoading) return <div className="flex justify-center p-20"><Loader2 className="animate-spin h-10 w-10 text-primary" /></div>;
@@ -59,14 +61,13 @@ const MyBookings = () => {
         <p className="text-muted-foreground">Manage your tickets and track payment status.</p>
       </div>
 
-      {/* ⚠️ UX IMPROVEMENT: Global Disclaimer for Pending Bookings */}
       {hasPendingBookings && (
         <Alert variant="warning" className="mb-8 border-orange-200 bg-orange-50 text-orange-800">
           <TriangleAlert className="h-4 w-4 text-orange-600" />
           <AlertTitle className="text-orange-900 font-semibold">Action Required</AlertTitle>
           <AlertDescription>
             You have pending bookings. Please complete payment within <strong>15 minutes</strong> to secure your seats. 
-            Unpaid bookings are automatically released to other customers.
+            Unpaid bookings are automatically released.
           </AlertDescription>
         </Alert>
       )}
@@ -89,7 +90,7 @@ const MyBookings = () => {
             const isCancelled = booking.status === "CANCELLED" || booking.status === "EXPIRED";
             const event = booking.event || {};
             
-            // Robust List Logic
+            // Handle legacy (seats) vs new (tickets) structure
             const listItems = booking.tickets || booking.seats || [];
 
             return (
@@ -134,9 +135,9 @@ const MyBookings = () => {
 
                 <Separator className="opacity-50" />
 
-                {/* Content */}
+
                 <CardContent className="flex-grow space-y-4 py-4">
-                  {/* Seats */}
+               
                   <div>
                     <div className="flex justify-between items-center mb-2">
                       <p className="text-xs font-bold uppercase text-muted-foreground tracking-wider">Seats Reserved</p>
@@ -159,17 +160,15 @@ const MyBookings = () => {
                     )}
                   </div>
 
-                  {/* Price */}
                   <div className="flex justify-between items-end pt-2">
                     <span className="text-sm text-muted-foreground font-medium">Total Amount</span>
                     <span className="text-xl font-bold text-slate-900">NPR {booking.totalAmount}</span>
                   </div>
                 </CardContent>
 
-                {/* Footer */}
+        
                 <CardFooter className="flex flex-col gap-3 pt-0 bg-slate-50/50 p-4 border-t">
-                  
-                  {/* Timer Section */}
+                
                   {isPending && booking.expiresAt && (
                     <div className="w-full flex items-center justify-between text-xs bg-orange-100/50 text-orange-800 p-2 rounded-md border border-orange-100">
                       <div className="flex items-center gap-1.5">
@@ -214,7 +213,8 @@ const MyBookings = () => {
                   ) : (
                     <Button
                       variant="outline"
-                      onClick={() => setSelectedBookingId(booking.id)}
+                      // 3️⃣ FIX: Pass the whole object here
+                      onClick={() => setSelectedBooking(booking)}
                       className="w-full border-green-200 text-green-700 hover:bg-green-50 hover:border-green-300 hover:text-green-800 shadow-sm"
                     >
                       <Ticket className="mr-2 h-4 w-4" />
@@ -228,11 +228,11 @@ const MyBookings = () => {
         </div>
       )}
 
-      {/* Ticket Modal */}
+
       <TicketModal
-        bookingId={selectedBookingId}
-        isOpen={!!selectedBookingId}
-        onClose={() => setSelectedBookingId(null)}
+        booking={selectedBooking} 
+        isOpen={!!selectedBooking}
+        onClose={() => setSelectedBooking(null)}
       />
     </div>
   );

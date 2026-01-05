@@ -3,7 +3,7 @@ import  prisma  from '../config/db';
 import { env } from '../config/env';
 import { AppError } from '../utils/AppError';
 import { BookingStatus, PaymentStatus, SeatStatus } from '@prisma/client';
-
+import {v4 as uuidv4} from 'uuid';
 // Exchange Rate
 const EXCHANGE_RATE_NPR_TO_USD = 135;
 
@@ -240,7 +240,8 @@ const finalizeBooking = async (bookingId: number, transactionId: string, gateway
                     bookingId,
                     seatId: seat.id,
                    
-                    qrCode: `TICKET-${bookingId}-${seat.id}-${Math.random().toString(36).substring(7).toUpperCase()}`
+                    qrCode: `TICKET-${bookingId}-${seat.id}-${uuidv4()}`
+
                 }
             });
         }
