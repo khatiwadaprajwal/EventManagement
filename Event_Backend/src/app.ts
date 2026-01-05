@@ -15,9 +15,23 @@ const app: Application = express();
 app.use(express.json()); 
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser()); 
+const allowedOrigins = [
+  "http://localhost:5173", // Vite (Current Frontend)
+
+  env.CLIENT_URL          
+];
 app.use(cors({
-  origin: env.CLIENT_URL, 
-  credentials: true,      
+  origin: (origin, callback) => {
+
+    if (!origin) return callback(null, true);
+    
+    if (allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true 
 }));         
 app.use(helmet());       
 
