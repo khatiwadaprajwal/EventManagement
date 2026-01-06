@@ -1,7 +1,6 @@
-
 <div align="center">
 
-# 🎟️ Event Management & Ticket Booking System
+# 🎟️ Event Management & Ticket Booking System (Backend)
 ### High-Concurrency Backend | TypeScript | Prisma | PostgreSQL
 
 A production-ready backend for event booking platforms (concerts, conferences, shows).
@@ -9,8 +8,9 @@ Focusing on **transactional safety**, **seat locking**, and **secure authenticat
 
 [Node.js](https://nodejs.org/) • [TypeScript](https://www.typescriptlang.org/) • [Prisma](https://www.prisma.io/) • [PostgreSQL](https://www.postgresql.org/) • [Docker](https://www.docker.com/)
 
----
 </div>
+
+---
 
 ## 🚀 Key Features
 
@@ -72,10 +72,12 @@ Event_Backend/
 ├── docker-compose.yml       # Database & Service Orchestration
 ├── Dockerfile               # Production Image Build
 └── package.json             # Dependencies
-🔄 Request Lifecycle
+```
+
+### 🔄 Request Lifecycle
 Data flows through a strict validation pipeline before reaching business logic.
-code
-Mermaid
+
+```mermaid
 graph LR
     A[Client] --> B(Route)
     B --> C{Zod Validation}
@@ -86,10 +88,15 @@ graph LR
     G --> H[Service Layer]
     H --> I[(Prisma Transaction)]
     I --> J[JSON Response]
-🧠 Concurrency & Seat Locking
+```
+
+---
+
+## 🧠 Concurrency & Seat Locking
+
 To handle multiple users trying to book the same seat simultaneously, we use Prisma Transactions. This ensures an "all-or-nothing" execution.
-code
-TypeScript
+
+```typescript
 // src/services/booking.service.ts
 
 await prisma.$transaction(async (tx) => {
@@ -118,11 +125,13 @@ await prisma.$transaction(async (tx) => {
 
   return booking;
 });
-🧪 Validation Example (Zod)
+```
+
+### 🧪 Validation Example (Zod)
 We define schemas separate from controllers to keep logic clean.
-1. Define Schema
-code
-TypeScript
+
+**1. Define Schema**
+```typescript
 // src/validators/booking.schema.ts
 export const createBookingSchema = z.object({
   body: z.object({
@@ -130,9 +139,10 @@ export const createBookingSchema = z.object({
     seatIds: z.array(z.number()).min(1, "Select at least one seat"),
   }),
 });
-2. Apply Middleware
-code
-TypeScript
+```
+
+**2. Apply Middleware**
+```typescript
 // src/routes/booking.routes.ts
 router.post(
   '/',
@@ -140,40 +150,55 @@ router.post(
   validate(createBookingSchema),  // 2. Validate Body
   bookingController.createBooking // 3. Execute Logic
 );
-▶️ Getting Started
-Prerequisites
-Node.js v20+
-Docker & Docker Compose
-Installation
-Clone the repository
-code
-Bash
-git clone https://github.com/khatiwadaprajwal/EventManagement.git
-cd event-backend
-Install dependencies
-code
-Bash
-npm install
-Setup Environment
-code
-Bash
-cp .env.example .env
-# Update DB credentials in .env
-Start Database (Docker)
-code
-Bash
-docker-compose up -d
-Run Migrations
-code
-Bash
-npx prisma migrate dev --name init
-npx prisma generate
-Start Server
-code
-Bash
-npm run dev
-Server running on: http://localhost:8000
-🔐 Authentication Flow
-Login: User receives an accessToken (JSON) and refreshToken (HttpOnly Cookie).
-Access: Bearer Token sent in Authorization header.
-Refresh: When Access Token expires, the /refresh endpoint uses the HttpOnly cookie to issue a new pair.
+```
+
+---
+
+## ▶️ Getting Started
+
+### Prerequisites
+*   Node.js v20+
+*   Docker & Docker Compose
+
+### Installation
+
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/khatiwadaprajwal/EventManagement.git
+   cd event-backend
+   ```
+
+2. **Install dependencies**
+   ```bash
+   npm install
+   ```
+
+3. **Setup Environment**
+   ```bash
+   cp .env.example .env
+   # Update DB credentials in .env
+   ```
+
+4. **Start Database (Docker)**
+   ```bash
+   docker-compose up -d
+   ```
+
+5. **Run Migrations**
+   ```bash
+   npx prisma migrate dev --name init
+   npx prisma generate
+   ```
+
+6. **Start Server**
+   ```bash
+   npm run dev
+   ```
+   Server running on: `http://localhost:8000`
+
+---
+
+### 🔐 Authentication Flow
+*   **Login:** User receives an `accessToken` (JSON) and `refreshToken` (HttpOnly Cookie).
+*   **Access:** Bearer Token sent in `Authorization` header.
+*   **Refresh:** When Access Token expires, the `/refresh` endpoint uses the HttpOnly cookie to issue a new pair.

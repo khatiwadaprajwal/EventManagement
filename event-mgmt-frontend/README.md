@@ -15,8 +15,9 @@ Features **interactive seat mapping**, **JWT authentication with auto-refresh**,
   <img src="https://img.shields.io/badge/Axios-Networking-5A29E4?style=flat&logo=axios&logoColor=white" alt="Axios" />
 </p>
 
----
 </div>
+
+---
 
 ## 🚀 Key Features
 
@@ -101,39 +102,51 @@ src/
 │   ├── PaymentSuccess.jsx  # Post-payment landing
 │   └── Profile.jsx         # User settings (Tabs)
 └── App.jsx                 # Route definitions & Guard logic
-🔄 Booking & Payment Flow
-code
-Mermaid
+```
+
+### 🔄 Booking & Payment Flow
+
+```mermaid
 graph LR
     A[User] --> B(Select Seats)
     B --> C{Create Booking}
-    C -->|Success| D[My Bookings (Pending)]
+    C -->|Success| D[My Bookings - Pending]
     D --> E[Select Payment Method]
     E -->|Khalti/PayPal| F[Payment Gateway]
     F -->|Success| G[Backend Webhook]
     F -->|Redirect| H[Payment Success Page]
     H --> I[Ticket Generated]
-▶️ Getting Started
-Prerequisites
-Node.js v18+
-Backend Server Running on Port 8000
-Installation
-Clone the repository
-code
-Bash
-git clone https://github.com/yourusername/event-frontend.git
-cd event-frontend
-Install dependencies
-code
-Bash
-npm install
-Environment Setup
-Create a .env file in the root directory:
-code
-Bash
-VITE_API_URL=http://localhost:8000/v1
-Start Development Server
-code
-Bash
-npm run dev
-Access the application at http://localhost:5173
+```
+
+---
+
+## ▶️ Getting Started
+
+### Prerequisites
+*   Node.js v18+
+*   Backend Server Running on Port 8000
+
+### Installation
+
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/khatiwadaprajwal/event-mgmt-frontend.git
+   cd event-frontend
+   ```
+
+2. **Install dependencies**
+   ```bash
+   npm install
+   ```
+
+3. **Environment Setup**
+   Create a `.env` file in the root directory:
+   ```bash
+   VITE_API_URL=http://localhost:8000/v1
+   ```
+
+4. **Start Development Server**
+   ```bash
+   npm run dev
+   ```
+   Access the application at `http://localhost:5173`
