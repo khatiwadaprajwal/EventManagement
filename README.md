@@ -1,137 +1,116 @@
-🎟️ Event Management & Ticket Booking System (Backend)
 
-A production-ready, high-concurrency backend for event & ticket booking platforms (concerts, shows, conferences).
-Built with TypeScript, Prisma, PostgreSQL, focusing on seat locking, transactional safety, and secure authentication.
+<div align="center">
 
-🚀 Key Features
+# 🎟️ Event Management & Ticket Booking System
+### High-Concurrency Backend | TypeScript | Prisma | PostgreSQL
 
-🔒 High Concurrency Handling
+A production-ready backend for event booking platforms (concerts, conferences, shows).
+Focusing on **transactional safety**, **seat locking**, and **secure authentication**.
 
-Prevents double booking
+[Node.js](https://nodejs.org/) • [TypeScript](https://www.typescriptlang.org/) • [Prisma](https://www.prisma.io/) • [PostgreSQL](https://www.postgresql.org/) • [Docker](https://www.docker.com/)
 
-Seat locking with Prisma transactions
+---
+</div>
 
-Atomic booking & payment flow
+## 🚀 Key Features
 
-🛡️ Security First
+### 🔒 **High Concurrency & Integrity**
+*   **Race Condition Prevention:** atomic transactions utilizing Prisma `interactiveTransactions`.
+*   **Seat Locking:** Prevents double-booking via optimistic concurrency control.
+*   **Atomic Operations:** Booking and payment status updates happen in a single database transaction.
 
-JWT Access + HttpOnly Refresh tokens
+### 🛡️ **Security First**
+*   **Dual Token Auth:** JWT Access Tokens (short-lived) + **HttpOnly** Refresh Tokens.
+*   **RBAC:** Strict Role-Based Access Control (`USER`, `ORGANIZER`, `ADMIN`).
+*   **Secure Headers:** Helmet integration and XSS protection.
 
-Role-Based Access Control (RBAC)
+### ✅ **Validation-First Architecture**
+*   **Zod Integration:** Runtime and compile-time data validation.
+*   **Middleware Guard:** Invalid data is blocked *before* reaching the controller layer.
 
-Centralized error handling
+### 🧱 **Clean Architecture**
+*   **Separation of Concerns:** Thin Controllers ➡️ Service Layer ➡️ Data Access.
+*   **Centralized Error Handling:** Uniform error responses across the API.
 
-✅ Validation-First Architecture
+---
 
-Zod schema validation
+## 🧰 Tech Stack
 
-Invalid data blocked before controllers
+| Component | Technology |
+| :--- | :--- |
+| **Runtime** | Node.js v20+ |
+| **Language** | TypeScript (Strict Mode) |
+| **Framework** | Express.js |
+| **Database** | PostgreSQL |
+| **ORM** | Prisma v5+ |
+| **Validation** | Zod |
+| **Auth** | JWT (Access + Refresh) |
+| **Container** | Docker & Docker Compose |
 
-Runtime + compile-time safety
+---
 
-🧱 Clean Architecture
+## 📁 Project Structure
 
-Thin controllers
+A clean, modular structure designed for scalability.
 
-Service layer for business logic
-
-Reusable utilities & middlewares
-
-🧰 Tech Stack (Backend Priority)
-
-Runtime: Node.js v20+
-
-Language: TypeScript (Strict Mode)
-
-Framework: Express.js
-
-Database: PostgreSQL
-
-ORM: Prisma v5+
-
-Validation: Zod
-
-Authentication: JWT (Access + Refresh)
-
-Authorization: RBAC (USER / ORGANIZER / ADMIN)
-
-File Uploads: Multer (Memory Storage)
-
-Infrastructure: Docker + Docker Compose
-
-📁 Backend Folder Structure (Clean)
+```text
 Event_Backend/
 ├── prisma/
-│   └── schema.prisma
-│
+│   └── schema.prisma        # Database Schema & Models
 ├── src/
-│   ├── config/              # App & service configs
-│   ├── controllers/         # Thin request handlers
-│   ├── services/            # Business logic
-│   ├── middlewares/         # Auth, validation, errors
-│   ├── routes/              # Route definitions
-│   ├── validators/          # Zod schemas (BEFORE controllers)
-│   ├── utils/               # Shared helpers
-│   ├── types/               # Type augmentation
-│   ├── app.ts               # Express setup
-│   └── server.ts            # Entry point
-│
-├── docker-compose.yml
-├── Dockerfile
-├── .env.example
-├── package.json
-├── tsconfig.json
-└── README.md
-
-🔄 Request Lifecycle (Validation-First)
-Client
- → Route
- → Zod Validation
- → Auth Middleware
- → Role Middleware
- → Controller
- → Service
- → Prisma Transaction
- → JSON Response
-
-
-❗ Invalid input never reaches controllers
-
-🔐 Authentication Model
-Access Token
-
-Sent via Authorization: Bearer <token>
-
-Short-lived
-
-Contains userId & role
-
-Refresh Token
-
-Stored in HttpOnly cookie
-
-Auto-rotated
-
-Protected from XSS
-
+│   ├── config/              # Environment & App Configuration
+│   ├── controllers/         # Request Handlers (Input/Output)
+│   ├── middlewares/         # Auth, Validation, Error Handling
+│   ├── routes/              # API Route Definitions
+│   ├── services/            # Core Business Logic
+│   ├── utils/               # Helper Functions & Constants
+│   ├── validators/          # Zod Schemas (Request Validation)
+│   ├── types/               # TypeScript Type Augmentations
+│   ├── app.ts               # Express App Setup
+│   └── server.ts            # Entry Point
+├── .env.example             # Environment Variables Template
+├── docker-compose.yml       # Database & Service Orchestration
+├── Dockerfile               # Production Image Build
+└── package.json             # Dependencies
+🔄 Request Lifecycle
+Data flows through a strict validation pipeline before reaching business logic.
+code
+Mermaid
+graph LR
+    A[Client] --> B(Route)
+    B --> C{Zod Validation}
+    C -- Invalid --> D[400 Error]
+    C -- Valid --> E{Auth Middleware}
+    E -- Unauthorized --> F[401 Error]
+    E -- Authorized --> G[Controller]
+    G --> H[Service Layer]
+    H --> I[(Prisma Transaction)]
+    I --> J[JSON Response]
 🧠 Concurrency & Seat Locking
-
-Problem: Multiple users selecting the same seat
-Solution: Prisma $transaction
+To handle multiple users trying to book the same seat simultaneously, we use Prisma Transactions. This ensures an "all-or-nothing" execution.
+code
+TypeScript
+// src/services/booking.service.ts
 
 await prisma.$transaction(async (tx) => {
+  // 1. Lock & Validate Seats
   const seats = await tx.seat.findMany({
-    where: { id: { in: seatIds }, status: 'AVAILABLE' },
+    where: { 
+      id: { in: seatIds }, 
+      status: 'AVAILABLE' 
+    },
   });
 
   if (seats.length !== seatIds.length) {
-    throw new AppError('Some seats already booked', 409);
+    throw new AppError('One or more seats are no longer available', 409);
   }
 
+  // 2. Create Booking
   const booking = await tx.booking.create({
-    data: { /* booking data */ },
+    data: { userId, eventId, totalAmount },
   });
 
+  // 3. Update Seat Status
   await tx.seat.updateMany({
     where: { id: { in: seatIds } },
     data: { status: 'BOOKED' },
@@ -139,44 +118,62 @@ await prisma.$transaction(async (tx) => {
 
   return booking;
 });
-
-
-✔ No race conditions
-✔ All-or-nothing execution
-✔ Database-level safety
-
 🧪 Validation Example (Zod)
-// validators/booking.schema.ts
+We define schemas separate from controllers to keep logic clean.
+1. Define Schema
+code
+TypeScript
+// src/validators/booking.schema.ts
 export const createBookingSchema = z.object({
   body: z.object({
-    eventId: z.number(),
-    seatIds: z.array(z.number()).min(1),
+    eventId: z.number({ required_error: "Event ID is required" }),
+    seatIds: z.array(z.number()).min(1, "Select at least one seat"),
   }),
 });
-
-// routes/booking.routes.ts
+2. Apply Middleware
+code
+TypeScript
+// src/routes/booking.routes.ts
 router.post(
   '/',
-  protect,
-  validate(createBookingSchema),
-  bookingController.createBooking
+  protect,                        // 1. Check Auth
+  validate(createBookingSchema),  // 2. Validate Body
+  bookingController.createBooking // 3. Execute Logic
 );
-
 ▶️ Getting Started
-# Install deps
+Prerequisites
+Node.js v20+
+Docker & Docker Compose
+Installation
+Clone the repository
+code
+Bash
+git clone https://github.com/khatiwadaprajwal/EventManagement.git
+cd event-backend
+Install dependencies
+code
+Bash
 npm install
-
-# Start database
+Setup Environment
+code
+Bash
+cp .env.example .env
+# Update DB credentials in .env
+Start Database (Docker)
+code
+Bash
 docker-compose up -d
-
-# Migrate DB
-npx prisma migrate dev
+Run Migrations
+code
+Bash
+npx prisma migrate dev --name init
 npx prisma generate
-
-# Start server
+Start Server
+code
+Bash
 npm run dev
-
-
-Server runs on:
-
-http://localhost:8000
+Server running on: http://localhost:8000
+🔐 Authentication Flow
+Login: User receives an accessToken (JSON) and refreshToken (HttpOnly Cookie).
+Access: Bearer Token sent in Authorization header.
+Refresh: When Access Token expires, the /refresh endpoint uses the HttpOnly cookie to issue a new pair.
