@@ -10,6 +10,29 @@ Focusing on **transactional safety**, **seat locking**, and **secure authenticat
 
 </div>
 
+📸 System Previews
+<div align="center">
+<h3>🏠 Landing & Home Page</h3>
+  <img src="home.jpg" width="100%" alt="Home Page" style="border-radius: 10px; margin-bottom: 20px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);" />
+<table>
+<tr>
+<td align="center">
+<b>Admin Dashboard</b><br/>
+<img src="admin.jpg" width="400" alt="Admin Dashboard" />
+</td>
+<td align="center">
+<b>Booking Management</b><br/>
+<img src="bookings.jpg" width="400" alt="Bookings" />
+</td>
+</tr>
+<tr>
+<td align="center" colspan="2">
+<b>Event Management</b><br/>
+<img src="manageevent.jpg" width="800" alt="Manage Event" />
+</td>
+</tr>
+</table>
+</div>
 ---
 
 ## 🚀 Key Features
