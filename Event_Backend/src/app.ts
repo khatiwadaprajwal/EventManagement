@@ -16,7 +16,8 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser()); 
 const allowedOrigins = [
-  "http://localhost:5173", // Vite (Current Frontend)
+  "http://localhost:5173", 
+  "http://localhost:5173",
 
   env.CLIENT_URL          
 ];
