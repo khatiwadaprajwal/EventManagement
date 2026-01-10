@@ -18,6 +18,38 @@ jobs:
       run:
         working-directory: ./Event_Backend
 
+
+    env:
+ 
+      NODE_ENV: 'test'
+      PORT: '8000'
+      
+  
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      
+
+      JWT_SECRET: '1234567890_test_secret_long_enough'
+      REFRESH_SECRET: '1234567890_test_refresh_long_enough'
+      JWT_EXPIRES_IN: '1d'
+
+
+      CLIENT_URL: 'http://localhost:3000'
+      GOOGLE_CALLBACK_URL: 'http://localhost:8000/auth/google/callback'
+      
+
+      GOOGLE_CLIENT_ID: 'dummy_google_id'
+      GOOGLE_CLIENT_SECRET: 'dummy_google_secret'
+      
+      PAYPAL_CLIENT_ID: 'dummy_paypal_id'
+      PAYPAL_CLIENT_SECRET: 'dummy_paypal_secret'
+      # PAYPAL_API has a default in env.ts, so we can omit it
+      
+      KHALTI_SECRET_KEY: 'dummy_khalti_key'
+      
+      CLOUDINARY_CLOUD_NAME: 'dummy_cloud_name'
+      CLOUDINARY_API_KEY: 'dummy_api_key'
+      CLOUDINARY_API_SECRET: 'dummy_api_secret'
+
     steps:
     - uses: actions/checkout@v4
     
@@ -32,41 +64,15 @@ jobs:
     - name: Generate Prisma Client
       run: npx prisma generate
 
+   
+    - name: Check Database URL Secret
+      run: |
+        if [ -z "$DATABASE_URL" ]; then
+          echo "::error::DATABASE_URL is missing! Tests will fail Zod validation."
+          exit 1
+        else
+          echo "DATABASE_URL is present (Good)."
+        fi
+
     - name: Run Tests
       run: npm test
-      env:
-        # --- App Config ---
-        NODE_ENV: 'test'
-        PORT: '8000'
-        
-        # --- The Critical Secret ---
-        DATABASE_URL: ${{ secrets.DATABASE_URL }}
-        
-        # --- Auth (Mocked for Testing) ---
-        JWT_SECRET: 'super_long_secret_for_testing_purposes'
-        REFRESH_SECRET: 'super_long_refresh_secret_for_testing'
-        JWT_EXPIRES_IN: '1d'
-
-        # --- URLs (Must be in quotes '...') ---
-        CLIENT_URL: 'http://localhost:3000'
-        GOOGLE_CALLBACK_URL: 'http://localhost:8000/auth/google/callback'
-        
-        # --- Third Party Keys (Mocked) ---
-        GOOGLE_CLIENT_ID: 'dummy_google_id_for_testing'
-        GOOGLE_CLIENT_SECRET: 'dummy_google_secret_for_testing'
-        
-        PAYPAL_BASE_URL: 'https://api-m.sandbox.paypal.com'
-        PAYPAL_CLIENT_ID: 'dummy_paypal_id'
-        PAYPAL_CLIENT_SECRET: 'dummy_paypal_secret'
-        
-        KHALTI_SECRET_KEY: 'dummy_khalti_key'
-        
-        # --- Extra Vars (Just in case) ---
-        DB_PORT: '5432'
-        CLOUDINARY_CLOUD_NAME: 'dummy_cloud_name'
-        CLOUDINARY_API_KEY: 'dummy_api_key'
-        CLOUDINARY_API_SECRET: 'dummy_api_secret'
-        
-        POSTGRES_USER: 'dummy_user'
-        POSTGRES_PASSWORD: 'dummy_password'
-        POSTGRES_DB: 'dummy_db'
