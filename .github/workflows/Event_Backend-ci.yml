@@ -1,4 +1,3 @@
-
 name: Backend CI
 
 on:
@@ -36,5 +35,26 @@ jobs:
     - name: Run Tests
       run: npm test
       env:
+        # Real Secrets (Loaded from GitHub Settings)
         DATABASE_URL: ${{ secrets.DATABASE_URL }}
         JWT_SECRET: ${{ secrets.JWT_SECRET }}
+        
+        # Dummy Values (To pass Zod Validation in env.ts)
+        NODE_ENV: 'test'
+        PORT: '3000'
+        CLIENT_URL: 'http://localhost:5173'
+        REFRESH_SECRET: 'test_refresh_secret'
+        
+        # Google Dummies
+        GOOGLE_CLIENT_ID: 'test_google_id'
+        GOOGLE_CLIENT_SECRET: 'test_google_secret'
+        GOOGLE_CALLBACK_URL: 'http://localhost:3000/auth/google/callback'
+        
+        # Payment/Cloud Dummies
+        PAYPAL_CLIENT_ID: 'test_paypal_id'
+        PAYPAL_CLIENT_SECRET: 'test_paypal_secret'
+        PAYPAL_BASE_URL: 'http://api.sandbox.paypal.com'
+        KHALTI_SECRET_KEY: 'test_khalti_key'
+        CLOUDINARY_CLOUD_NAME: 'test_cloud'
+        CLOUDINARY_API_KEY: 'test_api_key'
+        CLOUDINARY_API_SECRET: 'test_api_secret'
