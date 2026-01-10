@@ -33,39 +33,40 @@ jobs:
       run: npx prisma generate
 
     - name: Run Tests
-      # We skip the real secrets for TESTING and use Valid Dummies
-      # that pass the Zod min(10) and .url() checks.
       run: npm test
       env:
-        # --- Required by Zod ---
+        # --- App Config ---
         NODE_ENV: 'test'
         PORT: '8000'
         
-       
+        # --- The Critical Secret ---
         DATABASE_URL: ${{ secrets.DATABASE_URL }}
         
-        # Auth (Must be min 10 chars)
+        # --- Auth (Mocked for Testing) ---
         JWT_SECRET: 'super_long_secret_for_testing_purposes'
         REFRESH_SECRET: 'super_long_refresh_secret_for_testing'
         JWT_EXPIRES_IN: '1d'
 
-        # URLs (Must be http://...)
+        # --- URLs (Must be in quotes '...') ---
         CLIENT_URL: 'http://localhost:3000'
         GOOGLE_CALLBACK_URL: 'http://localhost:8000/auth/google/callback'
         
-        # Third Party Keys (Cannot be empty)
+        # --- Third Party Keys (Mocked) ---
         GOOGLE_CLIENT_ID: 'dummy_google_id_for_testing'
         GOOGLE_CLIENT_SECRET: 'dummy_google_secret_for_testing'
-        PAYPAL_BASE_URL: https://writebaseurlhere.com
+        
+        PAYPAL_BASE_URL: 'https://api-m.sandbox.paypal.com'
         PAYPAL_CLIENT_ID: 'dummy_paypal_id'
         PAYPAL_CLIENT_SECRET: 'dummy_paypal_secret'
-        # Note: PAYPAL_API has a default in your code, so we can skip it or set it
         
         KHALTI_SECRET_KEY: 'dummy_khalti_key'
-        DB_PORT: 1234
+        
+        # --- Extra Vars (Just in case) ---
+        DB_PORT: '5432'
         CLOUDINARY_CLOUD_NAME: 'dummy_cloud_name'
         CLOUDINARY_API_KEY: 'dummy_api_key'
         CLOUDINARY_API_SECRET: 'dummy_api_secret'
-        POSTGRES_USER: erfrfr
-        POSTGRES_PASSWORD: dsfbvdffvdfvs
-        POSTGRES_DB: dsfgbvdfvbgfv
+        
+        POSTGRES_USER: 'dummy_user'
+        POSTGRES_PASSWORD: 'dummy_password'
+        POSTGRES_DB: 'dummy_db'
