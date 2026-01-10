@@ -1,7 +1,8 @@
 import axios from "axios";
 
 // Defined in Master Context
-const BACKEND_URL =process.env.VITE_API_URL;
+const BACKEND_URL = import.meta.env.VITE_API_URL;
+
 
 const apiClient = axios.create({
   baseURL: BACKEND_URL, 
