@@ -1,35 +1,38 @@
-name: Backend CI
+name: Backend CI Production
 
 on:
+
   push:
     branches: [ "main" ]
-    paths:
-      - 'Event_Backend/**'
+  
+
+  workflow_dispatch:
 
 jobs:
   test:
     runs-on: ubuntu-latest
     
+
     defaults:
       run:
         working-directory: ./Event_Backend
 
-    # GLOBAL ENV VARS
     env:
       NODE_ENV: 'test'
       PORT: '8000'
-      
-      # ✅ REAL SECRET (From GitHub Settings)
+
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
       
-      # ✅ DUMMY SECRETS (To satisfy env.ts Zod rules)
+
       JWT_SECRET: '1234567890_dummy_secret_long_enough'
       REFRESH_SECRET: '1234567890_dummy_refresh_long_enough'
       JWT_EXPIRES_IN: '1d'
 
+
       CLIENT_URL: 'http://localhost:3000'
       GOOGLE_CALLBACK_URL: 'http://localhost:8000/auth/google/callback'
       
+
       GOOGLE_CLIENT_ID: 'dummy_google_id'
       GOOGLE_CLIENT_SECRET: 'dummy_google_secret'
       
