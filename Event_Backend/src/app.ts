@@ -17,7 +17,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser()); 
 const allowedOrigins = [
   "http://localhost:5173", 
-  "http://localhost:5173",
+  "http://localhost:5174",
 
   env.CLIENT_URL          
 ];
