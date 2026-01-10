@@ -41,7 +41,7 @@ jobs:
         NODE_ENV: 'test'
         PORT: '8000'
         
-        # Database (Use Secret for connection, dummies for the rest)
+       
         DATABASE_URL: ${{ secrets.DATABASE_URL }}
         
         # Auth (Must be min 10 chars)
@@ -56,13 +56,16 @@ jobs:
         # Third Party Keys (Cannot be empty)
         GOOGLE_CLIENT_ID: 'dummy_google_id_for_testing'
         GOOGLE_CLIENT_SECRET: 'dummy_google_secret_for_testing'
-        
+        PAYPAL_BASE_URL: https://writebaseurlhere.com
         PAYPAL_CLIENT_ID: 'dummy_paypal_id'
         PAYPAL_CLIENT_SECRET: 'dummy_paypal_secret'
         # Note: PAYPAL_API has a default in your code, so we can skip it or set it
         
         KHALTI_SECRET_KEY: 'dummy_khalti_key'
-        
+        DB_PORT: 1234
         CLOUDINARY_CLOUD_NAME: 'dummy_cloud_name'
         CLOUDINARY_API_KEY: 'dummy_api_key'
         CLOUDINARY_API_SECRET: 'dummy_api_secret'
+        POSTGRES_USER: erfrfr
+        POSTGRES_PASSWORD: dsfbvdffvdfvs
+        POSTGRES_DB: dsfgbvdfvbgfv
