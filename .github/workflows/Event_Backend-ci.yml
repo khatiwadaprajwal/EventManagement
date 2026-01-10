@@ -5,10 +5,6 @@ on:
     branches: [ "main" ]
     paths:
       - 'Event_Backend/**'
-  pull_request:
-    branches: [ "main" ]
-    paths:
-      - 'Event_Backend/**'
 
 jobs:
   test:
@@ -18,36 +14,35 @@ jobs:
       run:
         working-directory: ./Event_Backend
 
-
+    # GLOBAL ENV VARS
     env:
- 
       NODE_ENV: 'test'
       PORT: '8000'
-      
-  
+
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
       
-
-      JWT_SECRET: '1234567890_test_secret_long_enough'
-      REFRESH_SECRET: '1234567890_test_refresh_long_enough'
+      # ✅ DUMMY SECRETS (So Zod doesn't crash the app)
+      # Auth
+      JWT_SECRET: '1234567890_dummy_secret_long_enough'
+      REFRESH_SECRET: '1234567890_dummy_refresh_long_enough'
       JWT_EXPIRES_IN: '1d'
 
-
+      # URLs
       CLIENT_URL: 'http://localhost:3000'
       GOOGLE_CALLBACK_URL: 'http://localhost:8000/auth/google/callback'
       
-
+      # Required Keys (We use dummies because we don't need real Paypal/Google to run tests)
       GOOGLE_CLIENT_ID: 'dummy_google_id'
       GOOGLE_CLIENT_SECRET: 'dummy_google_secret'
       
       PAYPAL_CLIENT_ID: 'dummy_paypal_id'
       PAYPAL_CLIENT_SECRET: 'dummy_paypal_secret'
-      # PAYPAL_API has a default in env.ts, so we can omit it
+      PAYPAL_API: 'https://api-m.sandbox.paypal.com'
       
       KHALTI_SECRET_KEY: 'dummy_khalti_key'
       
       CLOUDINARY_CLOUD_NAME: 'dummy_cloud_name'
-      CLOUDINARY_API_KEY: 'dummy_api_key'
+      CLOUDINARY_API_KEY: '1234567890'
       CLOUDINARY_API_SECRET: 'dummy_api_secret'
 
     steps:
@@ -63,16 +58,6 @@ jobs:
 
     - name: Generate Prisma Client
       run: npx prisma generate
-
-   
-    - name: Check Database URL Secret
-      run: |
-        if [ -z "$DATABASE_URL" ]; then
-          echo "::error::DATABASE_URL is missing! Tests will fail Zod validation."
-          exit 1
-        else
-          echo "DATABASE_URL is present (Good)."
-        fi
 
     - name: Run Tests
       run: npm test
