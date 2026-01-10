@@ -33,28 +33,36 @@ jobs:
       run: npx prisma generate
 
     - name: Run Tests
+      # We skip the real secrets for TESTING and use Valid Dummies
+      # that pass the Zod min(10) and .url() checks.
       run: npm test
       env:
-        # Real Secrets (Loaded from GitHub Settings)
-        DATABASE_URL: ${{ secrets.DATABASE_URL }}
-        JWT_SECRET: ${{ secrets.JWT_SECRET }}
-        
-        # Dummy Values (To pass Zod Validation in env.ts)
+        # --- Required by Zod ---
         NODE_ENV: 'test'
-        PORT: '3000'
-        CLIENT_URL: 'http://localhost:5173'
-        REFRESH_SECRET: 'test_refresh_secret'
+        PORT: '8000'
         
-        # Google Dummies
-        GOOGLE_CLIENT_ID: 'test_google_id'
-        GOOGLE_CLIENT_SECRET: 'test_google_secret'
-        GOOGLE_CALLBACK_URL: 'http://localhost:3000/auth/google/callback'
+        # Database (Use Secret for connection, dummies for the rest)
+        DATABASE_URL: ${{ secrets.DATABASE_URL }}
         
-        # Payment/Cloud Dummies
-        PAYPAL_CLIENT_ID: 'test_paypal_id'
-        PAYPAL_CLIENT_SECRET: 'test_paypal_secret'
-        PAYPAL_BASE_URL: 'http://api.sandbox.paypal.com'
-        KHALTI_SECRET_KEY: 'test_khalti_key'
-        CLOUDINARY_CLOUD_NAME: 'test_cloud'
-        CLOUDINARY_API_KEY: 'test_api_key'
-        CLOUDINARY_API_SECRET: 'test_api_secret'
+        # Auth (Must be min 10 chars)
+        JWT_SECRET: 'super_long_secret_for_testing_purposes'
+        REFRESH_SECRET: 'super_long_refresh_secret_for_testing'
+        JWT_EXPIRES_IN: '1d'
+
+        # URLs (Must be http://...)
+        CLIENT_URL: 'http://localhost:3000'
+        GOOGLE_CALLBACK_URL: 'http://localhost:8000/auth/google/callback'
+        
+        # Third Party Keys (Cannot be empty)
+        GOOGLE_CLIENT_ID: 'dummy_google_id_for_testing'
+        GOOGLE_CLIENT_SECRET: 'dummy_google_secret_for_testing'
+        
+        PAYPAL_CLIENT_ID: 'dummy_paypal_id'
+        PAYPAL_CLIENT_SECRET: 'dummy_paypal_secret'
+        # Note: PAYPAL_API has a default in your code, so we can skip it or set it
+        
+        KHALTI_SECRET_KEY: 'dummy_khalti_key'
+        
+        CLOUDINARY_CLOUD_NAME: 'dummy_cloud_name'
+        CLOUDINARY_API_KEY: 'dummy_api_key'
+        CLOUDINARY_API_SECRET: 'dummy_api_secret'
