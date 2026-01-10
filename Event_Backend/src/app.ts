@@ -15,12 +15,16 @@ const app: Application = express();
 app.use(express.json()); 
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser()); 
+
+
+const productionClientUrl = env.CLIENT_URL?.trim().replace(/\/$/, ""); 
+
 const allowedOrigins = [
   "http://localhost:5173", 
   "http://localhost:5174",
-
-  env.CLIENT_URL          
+  productionClientUrl 
 ];
+
 app.use(cors({
   origin: (origin, callback) => {
 
@@ -29,22 +33,25 @@ app.use(cors({
     if (allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
+      console.error(`Blocked by CORS: ${origin}`); 
       callback(new Error('Not allowed by CORS'));
     }
   },
   credentials: true 
 }));         
-app.use(helmet());       
+app.use(helmet()); 
+
+    
 
 // Logger (Dev only)
 if (env.NODE_ENV === 'development') {
   app.use(morgan('dev'));
 }
 
-// Passport Init
+
 app.use(passport.initialize());
 
-// 2. Health Check
+
 app.get('/', (req: Request, res: Response) => {
   res.status(200).json({
     message: 'Welcome to TicketHive API 🚀',
