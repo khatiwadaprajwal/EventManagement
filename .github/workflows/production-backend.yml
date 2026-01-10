@@ -1,50 +1,17 @@
-name: Backend CI Production
+name: Backend Build Check
 
 on:
-
   push:
     branches: [ "main" ]
-  
-
   workflow_dispatch:
 
 jobs:
-  test:
+  build:
     runs-on: ubuntu-latest
     
-
     defaults:
       run:
         working-directory: ./Event_Backend
-
-    env:
-      NODE_ENV: 'test'
-      PORT: '8000'
-
-      DATABASE_URL: ${{ secrets.DATABASE_URL }}
-      
-
-      JWT_SECRET: '1234567890_dummy_secret_long_enough'
-      REFRESH_SECRET: '1234567890_dummy_refresh_long_enough'
-      JWT_EXPIRES_IN: '1d'
-
-
-      CLIENT_URL: 'http://localhost:3000'
-      GOOGLE_CALLBACK_URL: 'http://localhost:8000/auth/google/callback'
-      
-
-      GOOGLE_CLIENT_ID: 'dummy_google_id'
-      GOOGLE_CLIENT_SECRET: 'dummy_google_secret'
-      
-      PAYPAL_CLIENT_ID: 'dummy_paypal_id'
-      PAYPAL_CLIENT_SECRET: 'dummy_paypal_secret'
-      PAYPAL_API: 'https://api-m.sandbox.paypal.com'
-      
-      KHALTI_SECRET_KEY: 'dummy_khalti_key'
-      
-      CLOUDINARY_CLOUD_NAME: 'dummy_cloud_name'
-      CLOUDINARY_API_KEY: '1234567890'
-      CLOUDINARY_API_SECRET: 'dummy_api_secret'
 
     steps:
     - uses: actions/checkout@v4
@@ -58,7 +25,10 @@ jobs:
       run: npm ci
 
     - name: Generate Prisma Client
+      # Required because your code imports @prisma/client
       run: npx prisma generate
 
     - name: Run Build (TypeScript Check)
+      # This compiles the code to check for errors.
+      # It does NOT start the server.
       run: npm run build
