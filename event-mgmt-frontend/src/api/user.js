@@ -1,7 +1,7 @@
 import apiClient from "./axios";
 
 export const userAPI = {
-  // GET /v1/users/me
+  
   getProfile: async () => {
     const response = await apiClient.get("users/me");
     return response.data;

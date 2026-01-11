@@ -1,7 +1,7 @@
 import { useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { paymentAPI } from "@/api/payment";
-
+import { getErrorMessage } from "./apiHelpers";
 export const useInitiatePayment = () => {
   return useMutation({
     mutationFn: paymentAPI.initiatePayment,
@@ -18,7 +18,7 @@ export const useInitiatePayment = () => {
       }
     },
     onError: (error) => {
-      toast.error(error.response?.data?.message || "Payment initiation failed");
+      toast.error(getErrorMessage(error));
     },
   });
 };

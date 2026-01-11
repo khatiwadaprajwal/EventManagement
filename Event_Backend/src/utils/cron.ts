@@ -4,8 +4,6 @@ import prisma from '../config/db';
 export const startCleanupJob = () => {
   // Run every 1 minute
   cron.schedule('* * * * *', async () => {
-    // console.log('⏳ Checking for expired bookings...');
-
     try {
       const currentTime = new Date();
 
@@ -13,10 +11,10 @@ export const startCleanupJob = () => {
       const expiredBookings = await prisma.booking.findMany({
         where: {
           status: 'PENDING',
-          expiresAt: { lt: currentTime }, // Time has passed
+          expiresAt: { lt: currentTime }, 
         },
         include: {
-          tickets: true, // We need this to know which seats to unlock
+          tickets: true, 
         },
       });
 
@@ -24,16 +22,14 @@ export const startCleanupJob = () => {
 
       console.log(`Found ${expiredBookings.length} expired bookings. Cleaning up...`);
 
-      // 2. Collect all Seat IDs that need to be released
-      // We map through bookings, then through tickets to get seatIds
+      // 2. Collect IDs
       const seatIdsToRelease = expiredBookings.flatMap((booking) => 
         booking.tickets.map((ticket) => ticket.seatId)
       );
 
-      // 3. Extract Booking IDs to update
       const bookingIdsToCancel = expiredBookings.map((b) => b.id);
 
-      // 4. Execute Updates in a Transaction (All or Nothing)
+      // 3. Execute Updates in a Transaction
       await prisma.$transaction([
         
         // Step A: Release the Seats
@@ -46,14 +42,22 @@ export const startCleanupJob = () => {
           },
         }),
 
-        
+        // 🛠️ Step B: DELETE THE GHOST TICKETS
+        // This stops the unique constraint error for future bookings
+        prisma.ticket.deleteMany({
+          where: { 
+            bookingId: { in: bookingIdsToCancel } 
+          }
+        }),
+
+        // Step C: Cancel the Bookings
         prisma.booking.updateMany({
           where: { id: { in: bookingIdsToCancel } },
           data: { status: 'CANCELLED' }, 
         }),
       ]);
 
-      console.log(`✅ released ${seatIdsToRelease.length} seats and cancelled ${bookingIdsToCancel.length} bookings.`);
+      console.log(`✅ Released ${seatIdsToRelease.length} seats, deleted tickets, and cancelled bookings.`);
 
     } catch (error) {
       console.error('❌ Error in cleanup job:', error);

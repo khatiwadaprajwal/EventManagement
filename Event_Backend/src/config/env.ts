@@ -17,6 +17,7 @@ const envSchema = z.object({
    GOOGLE_CLIENT_ID: z.string().min(1),
    GOOGLE_CLIENT_SECRET: z.string().min(1),
    GOOGLE_CALLBACK_URL: z.string().url(),
+   BACKEND_URL: z.string().url(),
     // Frontend URL for redirecting after OAuth success
    CLIENT_URL: z.string().url().default('http://localhost:3000'),
    KHALTI_SECRET_KEY: z.string(),

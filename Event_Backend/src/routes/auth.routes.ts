@@ -24,7 +24,7 @@ router.get(
   authController.googleCallback.bind(authController)
 );
 
-// --- Protected Routes ---
+
 router.get('/me', protect, (req, res) => {
   res.status(200).json({
     status: 'success',

@@ -2,8 +2,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { userAPI } from "@/api/user";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
+import { getErrorMessage } from "./apiHelpers";
 
-// 1. Get Profile
 export const useProfile = () => {
   return useQuery({
     queryKey: ["profile"],
@@ -28,8 +28,8 @@ export const useUpdateProfile = () => {
         updateUser(updatedUser); 
       }
     },
-    onError: (err) => {
-      toast.error(err.response?.data?.message || "Failed to update profile");
+    onError: (error) => {
+      toast.error(getErrorMessage(error));
     },
   });
 };
@@ -38,11 +38,11 @@ export const useUpdateProfile = () => {
 export const useChangePassword = () => {
   return useMutation({
     mutationFn: userAPI.changePassword,
-    onSuccess: () => {
-      toast.success("Password changed successfully!");
+    onSuccess: (data) => {
+      toast.success(data.message);
     },
-    onError: (err) => {
-      toast.error(err.response?.data?.message || "Failed to change password");
+    onError: (error) => {
+      toast.error(getErrorMessage(error));
     },
   });
 };
@@ -51,11 +51,11 @@ export const useChangePassword = () => {
 export const useSetupSecurityQuestions = () => {
   return useMutation({
     mutationFn: userAPI.setupSecurityQuestions,
-    onSuccess: () => {
-      toast.success("Security questions saved!");
+    onSuccess: (data) => {
+      toast.success(data.message);
     },
-    onError: (err) => {
-      toast.error(err.response?.data?.message || "Failed to save security questions");
+    onError: (error) => {
+      toast.error(getErrorMessage(error));
     },
   });
 };

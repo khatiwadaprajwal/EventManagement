@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom"
 import { toast } from "sonner"
 import { authAPI } from "@/api/auth"
 import { useAuth } from "@/context/AuthContext"
+import { getErrorMessage } from "./apiHelpers"; 
 
 export const useLoginMutation = () => {
   const navigate = useNavigate()
@@ -14,12 +15,13 @@ export const useLoginMutation = () => {
       // Backend: { success: true, token: "...", data: { user: ... } }
       if (data.success) {
         setAuth(data.token, data.data.user)
-        toast.success("Welcome back!")
-        navigate("/") // Redirect to Home/Dashboard
+        toast.success(data.message)
+        navigate("/") 
       }
     },
     onError: (error) => {
-      toast.error(error.response?.data?.message || "Login failed")
+      
+      toast.error(getErrorMessage(error));
     },
   })
 }
@@ -32,13 +34,14 @@ export const useRegisterMutation = () => {
     mutationFn: authAPI.register,
     onSuccess: (data) => {
       if (data.success || data.token) {
-        setAuth(data.token, data.data.user) // Auto-login after register
-        toast.success("Account created successfully!")
+        setAuth(data.token, data.data.user) 
+        toast.success(data.message)
         navigate("/")
       }
     },
     onError: (error) => {
-      toast.error(error.response?.data?.message || "Registration failed")
+      
+      toast.error(getErrorMessage(error));
     },
   })
 }
@@ -47,10 +50,7 @@ export const useForgotPassword = () => {
   return useMutation({
     mutationFn: authAPI.getSecurityQuestions,
     onError: (error) => {
-      toast.error(
-        error.response?.data?.message ||
-          "Email not found or no questions set."
-      )
+      toast.error(getErrorMessage(error));
     },
   })
 }
@@ -58,14 +58,11 @@ export const useForgotPassword = () => {
 export const useResetPassword = () => {
   return useMutation({
     mutationFn: authAPI.resetPassword,
-    onSuccess: () => {
-      toast.success("Password reset successfully! Please login.")
+    onSuccess: (data) => {
+      toast.success(data.message);
     },
     onError: (error) => {
-      toast.error(
-        error.response?.data?.message ||
-          "Incorrect answers or failed reset."
-      )
+      toast.error(getErrorMessage(error));
     },
   })
 }

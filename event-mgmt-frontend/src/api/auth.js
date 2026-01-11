@@ -1,5 +1,5 @@
 import apiClient from "./axios";
-
+const URL = import.meta.env.VITE_API_URL;
 export const authAPI = {
   login: async (credentials) => {
     // FIX: Remove leading slash. "auth/login" appends to baseURL.
@@ -15,7 +15,7 @@ export const authAPI = {
   },
 
   getGoogleLoginUrl: () => {
-    return "http://localhost:8000/v1/auth/google";
+    return `${URL}/auth/google`;
   },
 
   getSecurityQuestions: async (email) => {

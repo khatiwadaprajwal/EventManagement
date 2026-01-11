@@ -2,8 +2,8 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { eventAPI } from "@/api/events";
 import { toast } from "sonner";
+import { getErrorMessage } from "./apiHelpers"; 
 
-// 1. Fetch all events
 export const useEvents = (filters = {}) => {
   return useQuery({
     queryKey: ["events", filters],
@@ -17,7 +17,7 @@ export const useEvents = (filters = {}) => {
 export const useEventDetails = (id) => {
   return useQuery({
     queryKey: ["event", id],
-    queryFn: () => eventAPI.getById(id), // ✅ Matches API
+    queryFn: () => eventAPI.getById(id), 
     enabled: !!id, 
   });
 };
@@ -27,13 +27,12 @@ export const useCreateEvent = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: eventAPI.create,
-    onSuccess: () => {
-      toast.success("Event created successfully!");
+    onSuccess: (data) => {
+      toast.success(data.message);
       queryClient.invalidateQueries(["events"]);
     },
     onError: (error) => {
-      const msg = error.response?.data?.message || "Failed to create event";
-      toast.error(msg);
+      toast.error(getErrorMessage(error));
     },
   });
 };
@@ -44,7 +43,7 @@ export const useUpdateEvent = () => {
   const navigate = useNavigate();
 
   return useMutation({
-    mutationFn: eventAPI.update, // ✅ Matches API name
+    mutationFn: eventAPI.update, 
     onSuccess: (_, variables) => {
       const { id } = variables.formData; // Note: variables is { id, formData }
       toast.success("Event updated successfully!");
@@ -56,23 +55,22 @@ export const useUpdateEvent = () => {
       navigate("/admin/events"); // Redirect to list
     },
     onError: (error) => {
-      const msg = error.response?.data?.message || "Failed to update event";
-      toast.error(msg);
+     toast.error(getErrorMessage(error));
     },
   });
 };
 
-// 5. Delete event
+
 export const useDeleteEvent = () => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: eventAPI.delete,
-    onSuccess: () => {
-      toast.success("Event deleted successfully");
+    onSuccess: (data) => {
+      toast.success(data.message);
       queryClient.invalidateQueries(["events"]);
     },
     onError: (error) => {
-      toast.error(error.response?.data?.message || "Failed to delete event");
+      toast.error(getErrorMessage(error));
     },
   });
 };

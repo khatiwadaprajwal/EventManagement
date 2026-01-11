@@ -14,7 +14,7 @@ interface SocialProfile {
   avatar?: string;
 }
 
-// --- 1. SOCIAL LOGIN (Fixed: Added this back) ---
+
 export const handleSocialLogin = async (profile: SocialProfile) => {
   const existingUser = await prisma.user.findUnique({
     where: { email: profile.email },
@@ -30,7 +30,7 @@ export const handleSocialLogin = async (profile: SocialProfile) => {
     return existingUser;
   }
 
-  // Create new user if not exists
+
   return prisma.user.create({
     data: {
       email: profile.email,

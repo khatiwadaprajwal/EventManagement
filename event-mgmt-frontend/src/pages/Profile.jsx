@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useForm, useFieldArray, Controller } from "react-hook-form"; // 👈 Import Controller
+import { useState, useEffect } from "react";
+import { useForm, useFieldArray, Controller } from "react-hook-form"; 
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { useAuth } from "@/context/AuthContext";
@@ -26,7 +26,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import { Loader2, Upload, Plus, Trash2 } from "lucide-react";
 
-// --- PRE-DEFINED QUESTIONS (Fixed List) ---
+
 const SECURITY_QUESTIONS = [
   "What is the name of your first pet?",
   "In what city were you born?",
@@ -36,7 +36,7 @@ const SECURITY_QUESTIONS = [
   "What is the name of your elementary school?"
 ];
 
-// --- VALIDATION SCHEMAS ---
+
 const profileSchema = z.object({
   name: z.string().min(2, "Name is required"),
 });
@@ -46,17 +46,18 @@ const passwordSchema = z.object({
   newPassword: z.string().min(6, "New password must be 6+ chars"),
 });
 
+
 const securityQuestionsSchema = z.object({
-  currentPassword: z.string().min(1, "Password required to save changes"),
+  currentPassword: z.string().optional(),
   questions: z.array(z.object({
     question: z.string().min(1, "Please select a question"),
     answer: z.string().min(1, "Answer is required")
-  })).min(3, "Please set up at least 3 questions for better security") // 👈 Enforce 3 questions
+  })).min(3, "Please set up at least 3 questions for better security") 
 });
 
 const Profile = () => {
   const { user } = useAuth();
-  const [avatarFile, setAvatarFile] = useState(null);
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [preview, setPreview] = useState(user?.avatar);
 
   // Hooks
@@ -66,6 +67,16 @@ const Profile = () => {
   const { mutate: setupQuestions, isPending: isSettingQuestions } = useSetupSecurityQuestions();
 
   const currentUser = profileData?.data?.user || user;
+
+ 
+  const isSocialUser = currentUser?.provider === 'GOOGLE';
+
+  
+  useEffect(() => {
+    if (currentUser?.avatar) {
+        setPreview(currentUser.avatar);
+    }
+  }, [currentUser]);
 
   // Forms
   const profileForm = useForm({
@@ -80,6 +91,7 @@ const Profile = () => {
   const questionForm = useForm({
     resolver: zodResolver(securityQuestionsSchema),
     defaultValues: {
+      currentPassword: "",
       questions: [
         { question: SECURITY_QUESTIONS[0], answer: "" },
         { question: SECURITY_QUESTIONS[1], answer: "" },
@@ -93,7 +105,7 @@ const Profile = () => {
     name: "questions"
   });
 
-  // Handlers
+ 
   const onProfileSubmit = (values) => {
     const formData = new FormData();
     formData.append("name", values.name);
@@ -112,7 +124,7 @@ const Profile = () => {
   };
 
   const handleFileChange = (e) => {
-    const file = e.target.files[0];
+    const file = e.target.files?.[0];
     if (file) {
       setAvatarFile(file);
       setPreview(URL.createObjectURL(file));
@@ -133,7 +145,6 @@ const Profile = () => {
 
         {/* --- GENERAL TAB --- */}
         <TabsContent value="general">
-           {/* ... (Same as before) ... */}
            <div className="grid gap-8 md:grid-cols-3">
             <Card className="md:col-span-1">
               <CardHeader>
@@ -141,7 +152,7 @@ const Profile = () => {
               </CardHeader>
               <CardContent className="flex flex-col items-center gap-4">
                 <Avatar className="h-32 w-32 border-2 border-primary">
-                  <AvatarImage src={preview} className="object-cover" />
+                  <AvatarImage src={preview || ""} className="object-cover" />
                   <AvatarFallback className="text-4xl">{currentUser?.name?.charAt(0)}</AvatarFallback>
                 </Avatar>
                 <div className="relative w-full">
@@ -181,33 +192,35 @@ const Profile = () => {
         {/* --- SECURITY TAB --- */}
         <TabsContent value="security" className="space-y-6">
           
-          {/* Change Password */}
-          <Card className="max-w-2xl">
-            <CardHeader>
-              <CardTitle className="h2">Change Password</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={passForm.handleSubmit(onPasswordSubmit)} className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Current Password</Label>
-                    <Input type="password" {...passForm.register("oldPassword")} />
-                    {passForm.formState.errors.oldPassword && <p className="text-red-500 text-sm">{passForm.formState.errors.oldPassword.message}</p>}
+          {/* 🛠️ LOGIC: Only show "Change Password" for non-social users */}
+          {!isSocialUser && (
+            <Card className="max-w-2xl">
+              <CardHeader>
+                <CardTitle className="h2">Change Password</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={passForm.handleSubmit(onPasswordSubmit)} className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Current Password</Label>
+                      <Input type="password" {...passForm.register("oldPassword")} />
+                      {passForm.formState.errors.oldPassword && <p className="text-red-500 text-sm">{passForm.formState.errors.oldPassword.message}</p>}
+                    </div>
+                    <div className="space-y-2">
+                      <Label>New Password</Label>
+                      <Input type="password" {...passForm.register("newPassword")} />
+                      {passForm.formState.errors.newPassword && <p className="text-red-500 text-sm">{passForm.formState.errors.newPassword.message}</p>}
+                    </div>
                   </div>
-                  <div className="space-y-2">
-                    <Label>New Password</Label>
-                    <Input type="password" {...passForm.register("newPassword")} />
-                    {passForm.formState.errors.newPassword && <p className="text-red-500 text-sm">{passForm.formState.errors.newPassword.message}</p>}
-                  </div>
-                </div>
-                <Button type="submit" disabled={isChangingPassword}>
-                  {isChangingPassword ? "Updating..." : "Update Password"}
-                </Button>
-              </form>
-            </CardContent>
-          </Card>
+                  <Button type="submit" disabled={isChangingPassword}>
+                    {isChangingPassword ? "Updating..." : "Update Password"}
+                  </Button>
+                </form>
+              </CardContent>
+            </Card>
+          )}
 
-          {/* Security Questions (FIXED DROPDOWNS) */}
+          {/* Security Questions */}
           <Card className="max-w-2xl border-orange-200">
             <CardHeader className="bg-orange-50/50">
               <CardTitle className="h2 text-orange-900">Security Questions</CardTitle>
@@ -225,7 +238,6 @@ const Profile = () => {
                         <div className="space-y-1">
                           <Label className="text-xs font-bold text-muted-foreground uppercase">Question {index + 1}</Label>
                           
-                          {/* 🛠️ FIX: Use Controller for Shadcn Select */}
                           <Controller
                             control={questionForm.control}
                             name={`questions.${index}.question`}
@@ -255,7 +267,6 @@ const Profile = () => {
                         </div>
                       </div>
                       
-                      {/* Allow remove only if > 3 (To enforce security) */}
                       {fields.length > 3 && (
                         <Button
                           type="button"
@@ -287,17 +298,20 @@ const Profile = () => {
 
                 <Separator />
 
-                <div className="space-y-2">
-                  <Label>Verify Password to Save</Label>
-                  <Input 
-                    type="password" 
-                    placeholder="Enter current password to confirm" 
-                    {...questionForm.register("currentPassword")} 
-                  />
-                  {questionForm.formState.errors.currentPassword && (
-                    <p className="text-red-500 text-sm">{questionForm.formState.errors.currentPassword.message}</p>
-                  )}
-                </div>
+                {/* 🛠️ LOGIC: Only ask for password if NOT a social user */}
+                {!isSocialUser && (
+                  <div className="space-y-2">
+                    <Label>Verify Password to Save</Label>
+                    <Input 
+                      type="password" 
+                      placeholder="Enter current password to confirm" 
+                      {...questionForm.register("currentPassword")} 
+                    />
+                    {questionForm.formState.errors.currentPassword && (
+                      <p className="text-red-500 text-sm">{questionForm.formState.errors.currentPassword.message}</p>
+                    )}
+                  </div>
+                )}
 
                 <Button type="submit" disabled={isSettingQuestions} className="w-full">
                   {isSettingQuestions ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Save Security Questions"}

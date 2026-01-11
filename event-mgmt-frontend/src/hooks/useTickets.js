@@ -1,16 +1,16 @@
 import { useMutation } from "@tanstack/react-query";
 import { ticketAPI } from "@/api/tickets";
 import { toast } from "sonner";
-
+import { getErrorMessage } from "./apiHelpers";
 export const useVerifyTicket = () => {
   return useMutation({
     mutationFn: ticketAPI.verify,
     onSuccess: (data) => {
-      toast.success("Ticket verified successfully!");
+      toast.success(data.message);
     },
     onError: (error) => {
     
-      console.error("Verification failed", error);
+      toast.error(getErrorMessage(error));
     }
   });
 };

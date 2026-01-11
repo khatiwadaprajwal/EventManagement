@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom"; 
 import { useEvents } from "@/hooks/useEvents";
 import EventCard from "@/components/EventCard";
 import { Button } from "@/components/ui/button";
@@ -17,56 +18,137 @@ import {
   Sparkles,
   Filter,
   X,
-  MapPin
 } from "lucide-react";
 
+// --- SUB-COMPONENT: HANDLES GRID STATES ---
+const EventGrid = ({ isLoading, isError, events, clearFilters }) => {
+  // 1. Loading
+  if (isLoading) {
+    return (
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {[1, 2, 3, 4, 5, 6].map((n) => (
+          <div key={n} className="space-y-3">
+            <div className="h-[280px] w-full bg-slate-200 rounded-2xl animate-pulse" />
+            <div className="h-4 w-3/4 bg-slate-200 rounded animate-pulse" />
+            <div className="h-4 w-1/2 bg-slate-200 rounded animate-pulse" />
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  // 2. Error
+  if (isError) {
+    return (
+      <div className="text-center py-20 bg-white rounded-2xl border border-dashed border-red-100">
+        <p className="text-red-500 font-medium">Failed to load events.</p>
+      </div>
+    );
+  }
+
+  // 3. Empty
+  if (events.length === 0) {
+    return (
+      <div className="bg-white py-20 rounded-2xl text-center border border-dashed border-slate-200 shadow-sm">
+        <div className="inline-flex p-4 bg-slate-50 rounded-full mb-4">
+          <Search className="h-8 w-8 text-slate-400" />
+        </div>
+        <h3 className="text-lg font-bold text-slate-900">No events found</h3>
+        <p className="text-slate-500 mt-1">We couldn't find anything matching your search/filters.</p>
+        <Button variant="link" onClick={clearFilters} className="mt-2 text-primary font-semibold">
+          Clear All Filters
+        </Button>
+      </div>
+    );
+  }
+
+  // 4. Success
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {events.map((event) => (
+        <div key={event.id} className="transform transition-all duration-300 hover:-translate-y-1">
+           <EventCard event={event} /> 
+        </div>
+      ))}
+    </div>
+  );
+};
+
 const Home = () => {
-  // --- STATE ---
-  const [search, setSearch] = useState("");
-  const [debouncedSearch, setDebouncedSearch] = useState("");
-  
-  // Filter States
-  const [location, setLocation] = useState("");
-  const [date, setDate] = useState("");
-  
-  // Applied Filters (We only refetch when user clicks "Apply")
-  const [appliedFilters, setAppliedFilters] = useState({ location: "", date: "" });
+  // --- URL PARAMS SETUP ---
+  const [searchParams, setSearchParams] = useSearchParams();
+  const LIMIT = 9;
 
-  const [page, setPage] = useState(1);
-  const LIMIT = 9; 
+  // Derive "Active" state from URL
+  const page = parseInt(searchParams.get("page") || "1");
+  const activeSearch = searchParams.get("search") || "";
+  const activeLocation = searchParams.get("location") || "";
+  const activeDate = searchParams.get("date") || "";
 
-  // Debounce Search
+  // --- LOCAL STATE (For Inputs before they are applied) ---
+  const [searchInput, setSearchInput] = useState(activeSearch);
+  const [filterLocation, setFilterLocation] = useState(activeLocation);
+  const [filterDate, setFilterDate] = useState(activeDate);
+  const [isFilterOpen, setIsFilterOpen] = useState(false); // Control Popover
+
+  // --- 1. HANDLE SEARCH (Debounce to URL) ---
   useEffect(() => {
     const timer = setTimeout(() => {
-      setDebouncedSearch(search);
-      setPage(1); 
-    }, 500); 
+      // Only update URL if the value actually changed
+      if (searchInput !== activeSearch) {
+        setSearchParams(prev => {
+          if (searchInput) prev.set("search", searchInput);
+          else prev.delete("search");
+          prev.set("page", "1"); // Reset page on search
+          return prev;
+        });
+      }
+    }, 500);
     return () => clearTimeout(timer);
-  }, [search]);
+  }, [searchInput, setSearchParams, activeSearch]);
 
-  // Handle Apply Filters
+  // --- 2. HANDLE FILTERS (Apply Button) ---
   const handleApplyFilters = () => {
-    setAppliedFilters({ location, date });
-    setPage(1); // Reset to page 1
-    // The Popover will close automatically if we click outside, or we can control open state
+    setSearchParams(prev => {
+      if (filterLocation) prev.set("location", filterLocation);
+      else prev.delete("location");
+
+      if (filterDate) prev.set("date", filterDate);
+      else prev.delete("date");
+
+      prev.set("page", "1"); 
+      return prev;
+    });
+    setIsFilterOpen(false); 
   };
 
   const clearFilters = () => {
-    setLocation("");
-    setDate("");
-    setAppliedFilters({ location: "", date: "" });
-    setPage(1);
+    setFilterLocation("");
+    setFilterDate("");
+    setSearchParams(prev => {
+      prev.delete("location");
+      prev.delete("date");
+      prev.set("page", "1");
+      return prev;
+    });
   };
 
-  // --- FETCH DATA ---
+  const handlePageChange = (newPage) => {
+    setSearchParams(prev => {
+      prev.set("page", newPage.toString());
+      return prev;
+    });
+    
+    window.scrollTo({ top: 400, behavior: 'smooth' });
+  };
+
   const { data, isLoading, isError } = useEvents({ 
-    search: debouncedSearch, 
+    search: activeSearch, 
     page, 
     limit: LIMIT,
     sort: '-date',
-    // 👇 Pass filters to Backend (Backend auto-handles these via ApiFeatures)
-    ...(appliedFilters.location && { location: appliedFilters.location }),
-    ...(appliedFilters.date && { date: appliedFilters.date }),
+    ...(activeLocation && { location: activeLocation }),
+    ...(activeDate && { date: activeDate }),
   });
 
   const events = data?.data?.events || [];
@@ -76,21 +158,22 @@ const Home = () => {
   const hasNextPage = page < totalPages;
   const hasPrevPage = page > 1;
 
-  // Count active filters for badge
-  const activeFilterCount = (appliedFilters.location ? 1 : 0) + (appliedFilters.date ? 1 : 0);
 
-  const EventSkeleton = () => (
-    <div className="space-y-3">
-      <div className="h-[280px] w-full bg-slate-200 rounded-2xl animate-pulse" />
-      <div className="h-4 w-3/4 bg-slate-200 rounded animate-pulse" />
-      <div className="h-4 w-1/2 bg-slate-200 rounded animate-pulse" />
-    </div>
-  );
+  const activeFilterCount = (activeLocation ? 1 : 0) + (activeDate ? 1 : 0);
+
+  
+  const onPopoverOpenChange = (open) => {
+    if (open) {
+      setFilterLocation(activeLocation);
+      setFilterDate(activeDate);
+    }
+    setIsFilterOpen(open);
+  };
 
   return (
     <div className="min-h-screen bg-slate-50 font-sans selection:bg-primary/20">
       
-      {/* --- HERO SECTION (Compact) --- */}
+      {/* --- HERO SECTION --- */}
       <section className="relative bg-[#0F172A] pt-12 pb-24 overflow-hidden">
         <div className="absolute inset-0 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px]"></div>
         <div className="absolute top-0 left-1/4 w-[400px] h-[400px] bg-primary/10 rounded-full blur-[100px] pointer-events-none" />
@@ -117,8 +200,8 @@ const Home = () => {
               <div className="relative flex items-center bg-white rounded-full shadow-xl p-1.5 pl-5 transition-transform group-hover:scale-[1.01]">
                 <Search className="h-4 w-4 text-slate-400" />
                 <Input 
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
+                  value={searchInput}
+                  onChange={(e) => setSearchInput(e.target.value)}
                   placeholder="Search events..." 
                   className="flex-grow border-0 shadow-none focus-visible:ring-0 text-base h-10 bg-transparent placeholder:text-slate-400 text-slate-800"
                 />
@@ -131,10 +214,9 @@ const Home = () => {
         </div>
       </section>
 
-      {/* --- CONTENT SECTION --- */}
       <section className="container mx-auto px-4 -mt-12 relative z-20 pb-20">
         
-        {/* Results & Filter Bar */}
+
         <div className="bg-white/95 backdrop-blur-sm border border-slate-200/60 p-4 rounded-xl shadow-lg mb-8 flex flex-col sm:flex-row items-center justify-between gap-4">
            <div className="flex items-center gap-3">
               <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
@@ -142,7 +224,7 @@ const Home = () => {
               </div>
               <div>
                 <h2 className="text-lg font-bold text-slate-900 leading-none">
-                  {debouncedSearch ? `Results for "${debouncedSearch}"` : "Upcoming Events"}
+                  {activeSearch ? `Results for "${activeSearch}"` : "Upcoming Events"}
                 </h2>
                 <p className="text-slate-500 text-xs mt-1 font-medium">
                   {meta.total} experiences found
@@ -150,8 +232,8 @@ const Home = () => {
               </div>
            </div>
 
-           {/* 👇 FILTER POPOVER */}
-           <Popover>
+           
+           <Popover open={isFilterOpen} onOpenChange={onPopoverOpenChange}>
              <PopoverTrigger asChild>
                <Button variant="outline" size="sm" className="border-slate-200 text-slate-600 hover:bg-slate-50 h-9 relative">
                  <Filter className="mr-2 h-3.5 w-3.5" /> 
@@ -178,8 +260,8 @@ const Home = () => {
                        id="location"
                        placeholder="e.g. Kathmandu"
                        className="col-span-2 h-8"
-                       value={location}
-                       onChange={(e) => setLocation(e.target.value)}
+                       value={filterLocation}
+                       onChange={(e) => setFilterLocation(e.target.value)}
                      />
                    </div>
                    <div className="grid grid-cols-3 items-center gap-4">
@@ -188,8 +270,8 @@ const Home = () => {
                        id="date"
                        type="date"
                        className="col-span-2 h-8 block"
-                       value={date}
-                       onChange={(e) => setDate(e.target.value)}
+                       value={filterDate}
+                       onChange={(e) => setFilterDate(e.target.value)}
                      />
                    </div>
                  </div>
@@ -204,35 +286,13 @@ const Home = () => {
            </Popover>
         </div>
 
-        {/* --- GRID --- */}
-        {isLoading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-             {[1, 2, 3, 4, 5, 6].map((n) => <EventSkeleton key={n} />)}
-          </div>
-        ) : isError ? (
-          <div className="text-center py-20 bg-white rounded-2xl border border-dashed border-red-100">
-            <p className="text-red-500 font-medium">Failed to load events.</p>
-          </div>
-        ) : events.length === 0 ? (
-          <div className="bg-white py-20 rounded-2xl text-center border border-dashed border-slate-200 shadow-sm">
-            <div className="inline-flex p-4 bg-slate-50 rounded-full mb-4">
-              <Search className="h-8 w-8 text-slate-400" />
-            </div>
-            <h3 className="text-lg font-bold text-slate-900">No events found</h3>
-            <p className="text-slate-500 mt-1">We couldn't find anything matching your search/filters.</p>
-            <Button variant="link" onClick={clearFilters} className="mt-2 text-primary font-semibold">
-              Clear All Filters
-            </Button>
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {events.map((event) => (
-              <div key={event.id} className="transform transition-all duration-300 hover:-translate-y-1">
-                 <EventCard event={event} /> 
-              </div>
-            ))}
-          </div>
-        )}
+        {/* --- GRID (Refactored to use Sub-Component) --- */}
+        <EventGrid 
+          isLoading={isLoading} 
+          isError={isError} 
+          events={events} 
+          clearFilters={clearFilters} 
+        />
 
         {/* --- PAGINATION --- */}
         {meta.total > LIMIT && (
@@ -240,7 +300,7 @@ const Home = () => {
             <Button
               variant="secondary"
               className="bg-white shadow-sm border border-slate-200 hover:bg-slate-50"
-              onClick={() => setPage((old) => Math.max(old - 1, 1))}
+              onClick={() => handlePageChange(page - 1)}
               disabled={!hasPrevPage}
             >
               <ChevronLeft className="mr-2 h-4 w-4" /> Previous
@@ -253,7 +313,7 @@ const Home = () => {
             <Button
               variant="secondary"
               className="bg-white shadow-sm border border-slate-200 hover:bg-slate-50"
-              onClick={() => setPage((old) => old + 1)}
+              onClick={() => handlePageChange(page + 1)}
               disabled={!hasNextPage}
             >
               Next <ChevronRight className="ml-2 h-4 w-4" />

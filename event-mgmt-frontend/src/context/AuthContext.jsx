@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect } from "react";
 
+
 const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
@@ -11,21 +12,52 @@ export const AuthProvider = ({ children }) => {
     const storedUser = localStorage.getItem("user");
     const storedToken = localStorage.getItem("accessToken");
     
-    if (storedToken && storedUser) {
-      setUser(JSON.parse(storedUser));
+    if (storedToken) {
       setToken(storedToken);
+      if (storedUser) {
+        setUser(JSON.parse(storedUser));
+      } 
     }
     setIsLoading(false);
   }, []);
 
   const setAuth = (newToken, newUser) => {
     localStorage.setItem("accessToken", newToken);
-    localStorage.setItem("user", JSON.stringify(newUser));
+    if (newUser) {
+      localStorage.setItem("user", JSON.stringify(newUser));
+      setUser(newUser);
+    }
     setToken(newToken);
-    setUser(newUser);
   };
 
-  // 🛠️ NEW: Helper to update user data manually (e.g. after Profile Update)
+  const fetchUser = async () => {
+    try {
+      const storedToken = localStorage.getItem("accessToken");
+      if (!storedToken) return;
+
+
+      const response = await fetch("https://eventmanagement-7axu.onrender.com/v1/auth/v1/auth/me", {
+        headers: {
+          Authorization: `Bearer ${storedToken}`,
+        },
+      });
+
+      if (!response.ok) throw new Error("Failed to fetch user");
+
+      const userData = await response.json();
+      
+      // Update state and storage
+      setUser(userData);
+      localStorage.setItem("user", JSON.stringify(userData));
+      
+      return userData;
+    } catch (error) {
+      console.error("Error fetching user:", error);
+      
+    }
+  };
+
+
   const updateUser = (userData) => {
     localStorage.setItem("user", JSON.stringify(userData));
     setUser(userData);
@@ -44,6 +76,7 @@ export const AuthProvider = ({ children }) => {
       user, 
       token, 
       setAuth, 
+      fetchUser, 
       updateUser, 
       logout, 
       isLoading, 

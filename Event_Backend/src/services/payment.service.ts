@@ -4,6 +4,8 @@ import { env } from '../config/env';
 import { AppError } from '../utils/AppError';
 import { BookingStatus, PaymentStatus, SeatStatus } from '@prisma/client';
 import {v4 as uuidv4} from 'uuid';
+
+
 // Exchange Rate
 const EXCHANGE_RATE_NPR_TO_USD = 135;
 
@@ -46,7 +48,7 @@ export const initiatePayment = async (bookingId: number, userId: number, gateway
     const amountInPaisa = Number(booking.totalAmount) * 100;
     
     const paymentData = {
-      return_url: `http://localhost:8000/v1/payments/khalti/callback`,
+      return_url: `${env.BACKEND_URL}/payments/khalti/callback`,
       website_url: env.CLIENT_URL,
       amount: amountInPaisa,
       purchase_order_id: booking.id.toString(), // We send ID here
@@ -80,7 +82,7 @@ export const initiatePayment = async (bookingId: number, userId: number, gateway
       intent: 'sale',
       payer: { payment_method: 'paypal' },
       redirect_urls: {
-        return_url: `http://localhost:8000/v1/payments/paypal/success?bookingId=${booking.id}`,
+        return_url: `${env.BACKEND_URL}/payments/paypal/success?bookingId=${booking.id}`,
         cancel_url: `${env.CLIENT_URL}/payment/cancel`,
       },
       transactions: [{

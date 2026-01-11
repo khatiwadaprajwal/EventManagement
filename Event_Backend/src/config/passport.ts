@@ -1,8 +1,7 @@
-// src/config/passport.ts
 import passport from 'passport';
 import { Strategy as GoogleStrategy } from 'passport-google-oauth20';
 import { env } from './env';
-import  * as authService  from '../services/auth.service';
+import * as authService from '../services/auth.service';
 import { AuthProvider } from '@prisma/client';
 
 passport.use(
@@ -17,10 +16,11 @@ passport.use(
         const user = await authService.handleSocialLogin({
           email: profile.emails?.[0].value as string,
           name: profile.displayName,
-          provider: 'GOOGLE', // Matches AuthProvider enum
+          provider: 'GOOGLE', 
           providerId: profile.id,
           avatar: profile.photos?.[0].value,
         });
+        // Now 'user' matches the type expected by done()
         return done(null, user);
       } catch (error) {
         return done(error, false);

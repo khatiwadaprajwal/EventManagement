@@ -2,7 +2,7 @@ import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { bookingAPI } from "@/api/bookings";
 import { eventAPI } from "@/api/events";
-
+import { getErrorMessage } from "./apiHelpers"; 
 
 export const useEventDetails = (id) => {
   return useQuery({
@@ -12,20 +12,18 @@ export const useEventDetails = (id) => {
   });
 };
 
-
 export const useCreateBooking = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: bookingAPI.createBooking,
     onSuccess: (data) => {
-      // Backend returns: { success: true, data: { booking: {...}, seats: [...] } }
-      toast.success("Booking successful! Redirecting to payment...");
-      // Invalidate queries to refresh seat status if we come back
+      toast.success(data.message);
       queryClient.invalidateQueries(["event"]); 
     },
     onError: (error) => {
-      toast.error(error.response?.data?.message || "Booking failed. Seats might be taken.");
+
+      toast.error(getErrorMessage(error));
     },
   });
 };
@@ -34,6 +32,6 @@ export const useBookingDetails = (bookingId) => {
   return useQuery({
     queryKey: ["booking", bookingId],
     queryFn: () => bookingAPI.getById(bookingId),
-    enabled: !!bookingId, // Only fetch if ID exists
+    enabled: !!bookingId, 
   });
 };
