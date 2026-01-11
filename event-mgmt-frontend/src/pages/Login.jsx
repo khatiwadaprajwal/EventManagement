@@ -28,7 +28,7 @@ const Login = () => {
 
   // Google Handler
   const handleGoogleLogin = () => {
-    window.location.href = "http://localhost:8000/v1/auth/google";
+    window.location.href = "https://eventmanagement-7axu.onrender.com/v1/auth/google";
   };
 
   return (
